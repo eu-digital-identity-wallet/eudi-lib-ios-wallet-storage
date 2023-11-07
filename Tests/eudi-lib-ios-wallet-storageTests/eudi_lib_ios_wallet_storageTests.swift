@@ -1,5 +1,5 @@
 import XCTest
-@testable import eudi_lib_ios_wallet_storage
+@testable import WalletStorage
 
 final class eudi_lib_ios_wallet_storageTests: XCTestCase {
     func testExample() throws {
