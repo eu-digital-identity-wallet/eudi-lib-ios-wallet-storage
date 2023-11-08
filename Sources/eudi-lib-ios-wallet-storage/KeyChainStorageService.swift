@@ -64,17 +64,17 @@ public class KeyChainStorageService: DataStorageService {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
 		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		var query = makeQuery(id: document.docType, bAll: false)
+		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService, kSecAttrAccount: document.id] as [String: Any]
 		#if os(macOS)
 		query[kSecUseDataProtectionKeychain as String] = true
 	   #endif
-		
 		query[kSecValueData as String] = document.data
 		query[kSecAttrLabel as String] = document.docType
 		var status = SecItemAdd(query as CFDictionary, nil)
 		if status == errSecDuplicateItem {
 			let updated = [kSecValueData: document.data, kSecAttrLabel: document.docType] as [String: Any]
-			status = SecItemUpdate(makeQuery(id: document.id, bAll: false) as CFDictionary, updated as CFDictionary)
+			query = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService, kSecAttrAccount: document.id] as [String: Any]
+			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
 		}
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
@@ -86,13 +86,27 @@ public class KeyChainStorageService: DataStorageService {
 	/// Note: the value passed in will be zeroed out after the secret is deleted
 	/// - Parameters:
 	///   - id: The Id of the secret
-	///   - itemTypeCode: The secret type code (4 chars)
-	///   - accessGroup: The access group of the secret.
 	public func deleteDocument(id: String) throws {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
 		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		let query = makeQuery(id: id, bAll: false)
+		let query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService, kSecAttrAccount: id] as [String: Any]
+		let status = SecItemDelete(query as CFDictionary)
+		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		guard status == errSecSuccess else {
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
+		}
+	}
+	
+	/// Delete all documents from keychain
+	/// Note: the value passed in will be zeroed out after the secret is deleted
+	/// - Parameters:
+	///   - id: The Id of the secret
+	public func deleteDocuments() throws {
+		// kSecAttrAccount is used to store the secret Id so that we can look it up later
+		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
+		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
+		let query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService] as [String: Any]
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {

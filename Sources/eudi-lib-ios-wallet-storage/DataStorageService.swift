@@ -22,4 +22,5 @@ public protocol DataStorageService {
 	func loadDocuments() throws -> [Document]?
 	func saveDocument(_ document: Document) throws
 	func deleteDocument(id: String) throws
+	func deleteDocuments() throws
 }
