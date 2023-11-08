@@ -18,8 +18,8 @@ import Foundation
 
 /// Data storage protocol
 public protocol DataStorageService {
-	func loadDocument(docType: String) throws -> Document?
+	func loadDocument(id: String) throws -> Document?
 	func loadDocuments() throws -> [Document]?
 	func saveDocument(_ document: Document) throws
-	func deleteDocument(docType: String) throws
+	func deleteDocument(id: String) throws
 }

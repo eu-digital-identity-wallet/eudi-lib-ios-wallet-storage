@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "swift-log",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-log.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "cb28750240a9389e0023ee3e3cb6c83ce0960f5c"
+      }
+    }
+  ],
+  "version" : 2
+}

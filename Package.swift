@@ -13,11 +13,15 @@ let package = Package(
             name: "WalletStorage",
             targets: ["WalletStorage"]),
     ],
+    dependencies: [
+         .package(url: "https://github.com/apple/swift-log.git", branch: "main"),
+    ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "WalletStorage"),
+            name: "WalletStorage", dependencies: [
+               .product(name: "Logging", package: "swift-log")]),
         .testTarget(
             name: "WalletStorageTests",
             dependencies: ["WalletStorage"]),

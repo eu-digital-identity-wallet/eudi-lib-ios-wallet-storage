@@ -19,7 +19,19 @@ import Foundation
 public class KeyChainStorageService: DataStorageService {
 	var vcService = "eudiw"
 	var accessGroup: String?
-	var issuerFetching: ()
+
+	public func loadDocument(id: String) throws -> Document? {
+		let query = makeQuery(id: nil, bAll: false)
+		var result: CFTypeRef?
+		let status = SecItemCopyMatching(query as CFDictionary, &result)
+		if status == errSecItemNotFound { return nil }
+		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		guard status == errSecSuccess else {
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
+		}
+		let dict = result as! NSDictionary
+		return makeDocument(dict: dict)
+	}
 	
 	public init() {}
 	
@@ -27,45 +39,18 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	///   - label: The label  (docType) of the secret
 	/// - Returns: The secret
-	public func loadDocument(docType: String) throws -> Document? {
-		let query = makeQuery(docType: docType, bAll: false)
-		var result: CFTypeRef?
-		let status = SecItemCopyMatching(query as CFDictionary, &result)
-		if status == errSecItemNotFound { return nil }
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
-		guard status == errSecSuccess else {
-			throw NSError(domain: "\(KeyChainStorageService.self)", code: Int(status), userInfo: [NSLocalizedDescriptionKey: statusMessage ?? ""])
-		}
-		let dict = result as! NSDictionary
-		return makeDocument(dict: dict)
-	}
-	
 	public func loadDocuments() throws -> [Document]? {
-		let query = makeQuery(docType: nil, bAll: true)
+		let query = makeQuery(id: nil, bAll: true)
 		var result: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &result)
 		if status == errSecItemNotFound { return nil }
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
-			throw NSError(domain: "\(KeyChainStorageService.self)", code: Int(status), userInfo: [NSLocalizedDescriptionKey: statusMessage ?? ""])
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 		let dicts = result as! [NSDictionary]
 		let documents = dicts.compactMap { makeDocument(dict: $0) }
 		return documents
-	}
-	
-	func makeQuery(docType: String?, bAll: Bool) -> [String: Any] {
-		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService,  kSecReturnData: true, kSecReturnAttributes: true] as [String: Any]
-		if bAll { query[kSecMatchLimit as String] = kSecMatchLimitAll}
-		if let docType { query[kSecAttrAccount as String] = docType}
-		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
-		return query
-	}
-	
-	func makeDocument(dict: NSDictionary) -> Document {
-		var data = dict[kSecValueData] as! Data
-		defer { let c = data.count; data.withUnsafeMutableBytes { memset_s($0.baseAddress, c, 0, c); return } }
-		return Document(id: dict[kSecAttrLabel] as? String ?? "", docType: dict[kSecAttrAccount] as? String ?? "", data: data, createdAt: dict[kSecAttrCreationDate] as! Date, modifiedAt: dict[kSecAttrModificationDate] as? Date)
 	}
 	
 	/// Save the secret to keychain
@@ -79,21 +64,21 @@ public class KeyChainStorageService: DataStorageService {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
 		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		var query = makeQuery(docType: document.docType, bAll: false)
+		var query = makeQuery(id: document.docType, bAll: false)
 		#if os(macOS)
 		query[kSecUseDataProtectionKeychain as String] = true
 	   #endif
 		
 		query[kSecValueData as String] = document.data
-		query[kSecAttrLabel as String] = document.id
+		query[kSecAttrLabel as String] = document.docType
 		var status = SecItemAdd(query as CFDictionary, nil)
 		if status == errSecDuplicateItem {
-			let updated = [kSecValueData: document.data, kSecAttrLabel: document.id] as [String: Any]
-			status = SecItemUpdate(makeQuery(docType: document.docType, bAll: false) as CFDictionary, updated as CFDictionary)
+			let updated = [kSecValueData: document.data, kSecAttrLabel: document.docType] as [String: Any]
+			status = SecItemUpdate(makeQuery(id: document.id, bAll: false) as CFDictionary, updated as CFDictionary)
 		}
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
-			throw NSError(domain: "\(KeyChainStorageService.self)", code: Int(status), userInfo: [NSLocalizedDescriptionKey: statusMessage ?? ""])
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 	}
 	
@@ -103,15 +88,37 @@ public class KeyChainStorageService: DataStorageService {
 	///   - id: The Id of the secret
 	///   - itemTypeCode: The secret type code (4 chars)
 	///   - accessGroup: The access group of the secret.
-	public func deleteDocument(docType: String) throws {		
+	public func deleteDocument(id: String) throws {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
 		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		let query = makeQuery(docType: docType, bAll: false)
+		let query = makeQuery(id: id, bAll: false)
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
-			throw NSError(domain: "\(KeyChainStorageService.self)", code: Int(status), userInfo: [NSLocalizedDescriptionKey: statusMessage ?? ""])
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
+	}
+	
+	/// Make a query for a an item in keychain
+	/// - Parameters:
+	///   - id: id
+	///   - bAll: request all matching items
+	/// - Returns: The dictionary query
+	func makeQuery(id: String?, bAll: Bool) -> [String: Any] {
+		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService,  kSecReturnData: true, kSecReturnAttributes: true] as [String: Any]
+		if bAll { query[kSecMatchLimit as String] = kSecMatchLimitAll}
+		if let id { query[kSecAttrAccount as String] = id}
+		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
+		return query
+	}
+	
+	/// Make a document from a keychain item
+	/// - Parameter dict: keychain item returned as dictionary
+	/// - Returns: the document
+	func makeDocument(dict: NSDictionary) -> Document {
+		var data = dict[kSecValueData] as! Data
+		defer { let c = data.count; data.withUnsafeMutableBytes { memset_s($0.baseAddress, c, 0, c); return } }
+		return Document(id: dict[kSecAttrAccount] as? String ?? "", docType: dict[kSecAttrLabel] as? String ?? "", data: data, createdAt: dict[kSecAttrCreationDate] as! Date, modifiedAt: dict[kSecAttrModificationDate] as? Date)
 	}
 }
