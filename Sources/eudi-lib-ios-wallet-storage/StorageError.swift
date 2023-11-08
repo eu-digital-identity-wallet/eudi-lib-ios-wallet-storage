@@ -14,7 +14,7 @@
  limitations under the License.
  */
 import Foundation
-struct StorageError: LocalizedError {
+public struct StorageError: LocalizedError {
 	
 	var description: String
 	var code: Int
@@ -24,7 +24,7 @@ struct StorageError: LocalizedError {
 		self.code = code
 	}
 	
-	var errorDescription: String? {
+	public var errorDescription: String? {
 		return description
 	}
 	
