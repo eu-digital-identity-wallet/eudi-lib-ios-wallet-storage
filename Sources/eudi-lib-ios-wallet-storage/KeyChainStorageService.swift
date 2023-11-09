@@ -17,8 +17,13 @@
 import Foundation
 /// Implements key-chain storage
 public class KeyChainStorageService: DataStorageService {
-	var vcService = "eudiw"
-	var accessGroup: String?
+	public init(serviceName: String, accessGroup: String? = nil) {
+		self.serviceName = serviceName
+		self.accessGroup = accessGroup
+	}
+	
+	public var serviceName: String
+	public var accessGroup: String?
 
 	public func loadDocument(id: String) throws -> Document? {
 		let query = makeQuery(id: nil, bAll: false)
@@ -32,9 +37,6 @@ public class KeyChainStorageService: DataStorageService {
 		let dict = result as! NSDictionary
 		return makeDocument(dict: dict)
 	}
-	
-	public init() {}
-	
 	/// Gets the secret with the id passed in parameter
 	/// - Parameters:
 	///   - label: The label  (docType) of the secret
@@ -62,9 +64,9 @@ public class KeyChainStorageService: DataStorageService {
 	///   - label: label of the document
 	public func saveDocument(_ document: Document) throws {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
-		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
+		// kSecAttrService is always set to serviceName to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService, kSecAttrAccount: document.id] as [String: Any]
+		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: serviceName, kSecAttrAccount: document.id] as [String: Any]
 		#if os(macOS)
 		query[kSecUseDataProtectionKeychain as String] = true
 	   #endif
@@ -73,7 +75,7 @@ public class KeyChainStorageService: DataStorageService {
 		var status = SecItemAdd(query as CFDictionary, nil)
 		if status == errSecDuplicateItem {
 			let updated = [kSecValueData: document.data, kSecAttrLabel: document.docType] as [String: Any]
-			query = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService, kSecAttrAccount: document.id] as [String: Any]
+			query = [kSecClass: kSecClassGenericPassword, kSecAttrService: serviceName, kSecAttrAccount: document.id] as [String: Any]
 			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
 		}
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
@@ -88,9 +90,9 @@ public class KeyChainStorageService: DataStorageService {
 	///   - id: The Id of the secret
 	public func deleteDocument(id: String) throws {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
-		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
+		// kSecAttrService is always set to serviceName to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		let query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService, kSecAttrAccount: id] as [String: Any]
+		let query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: serviceName, kSecAttrAccount: id] as [String: Any]
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
@@ -104,9 +106,9 @@ public class KeyChainStorageService: DataStorageService {
 	///   - id: The Id of the secret
 	public func deleteDocuments() throws {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
-		// kSecAttrService is always set to vcService to enable us to lookup all our secrets later if needed
+		// kSecAttrService is always set to serviceName to enable us to lookup all our secrets later if needed
 		// kSecAttrType is used to store the secret type to allow us to cast it to the right Type on search
-		let query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService] as [String: Any]
+		let query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: serviceName] as [String: Any]
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
@@ -120,7 +122,7 @@ public class KeyChainStorageService: DataStorageService {
 	///   - bAll: request all matching items
 	/// - Returns: The dictionary query
 	func makeQuery(id: String?, bAll: Bool) -> [String: Any] {
-		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: vcService,  kSecReturnData: true, kSecReturnAttributes: true] as [String: Any]
+		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: serviceName,  kSecReturnData: true, kSecReturnAttributes: true] as [String: Any]
 		if bAll { query[kSecMatchLimit as String] = kSecMatchLimitAll}
 		if let id { query[kSecAttrAccount as String] = id}
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }

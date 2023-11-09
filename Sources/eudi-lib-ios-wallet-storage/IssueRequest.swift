@@ -21,18 +21,14 @@ import CryptoKit
 public struct IssueRequest {
 	#if os(iOS)
 	let secureKey: SecureEnclave.P256.Signing.PrivateKey
-	@available(iOS 14.0, *)
+	/// DER representation of public key
 	var publicKey: Data { secureKey.publicKey.derRepresentation }
 	#endif
-	let certificate: SecCertificate?
-	
-	
+
 	/// Initialize issue request
 	/// - Parameters:
-	///   - certificate: Root certificate (optional)
 	///   - savedKey: saved key representation (optional)
-	public init(certificate: SecCertificate? = nil, savedKey: Data? = nil) throws {
-		self.certificate = certificate
+	public init(savedKey: Data? = nil) throws {
 	#if os(iOS)
 		secureKey = if let savedKey { try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: savedKey) } else { try SecureEnclave.P256.Signing.PrivateKey() }
 	#endif

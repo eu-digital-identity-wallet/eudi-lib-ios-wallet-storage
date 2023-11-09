@@ -18,6 +18,8 @@ import Foundation
 
 /// Data storage protocol
 public protocol DataStorageService {
+	var serviceName: String { get set }
+	var accessGroup: String? { get set }
 	func loadDocument(id: String) throws -> Document?
 	func loadDocuments() throws -> [Document]?
 	func saveDocument(_ document: Document) throws
