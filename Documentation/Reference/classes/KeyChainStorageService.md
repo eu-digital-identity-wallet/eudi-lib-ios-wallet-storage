@@ -8,8 +8,8 @@
   - `serviceName`
   - `accessGroup`
 - [Methods](#methods)
+  - `init(serviceName:accessGroup:)`
   - `loadDocument(id:)`
-  - `init()`
   - `loadDocuments()`
   - `saveDocument(_:)`
   - `deleteDocument(id:)`
@@ -27,7 +27,7 @@ Implements key-chain storage
 ### `serviceName`
 
 ```swift
-public var serviceName: String = "eudiw"
+public var serviceName: String
 ```
 
 ### `accessGroup`
@@ -37,17 +37,27 @@ public var accessGroup: String?
 ```
 
 ## Methods
+### `init(serviceName:accessGroup:)`
+
+```swift
+public init(serviceName: String, accessGroup: String? = nil)
+```
+
 ### `loadDocument(id:)`
 
 ```swift
 public func loadDocument(id: String) throws -> Document?
 ```
 
-### `init()`
+Gets the secret document by id passed in parameter
+- Parameter id: Document identifier
+- Returns: The document if exists
 
-```swift
-public init()
-```
+#### Parameters
+
+| Name | Description |
+| ---- | ----------- |
+| id | Document identifier |
 
 ### `loadDocuments()`
 
@@ -55,16 +65,9 @@ public init()
 public func loadDocuments() throws -> [Document]?
 ```
 
-Gets the secret with the id passed in parameter
+Gets all documents
 - Parameters:
-  - label: The label  (docType) of the secret
-- Returns: The secret
-
-#### Parameters
-
-| Name | Description |
-| ---- | ----------- |
-| label | The label  (docType) of the secret |
+- Returns: The documents stored in keychain under the serviceName
 
 ### `saveDocument(_:)`
 
@@ -75,19 +78,13 @@ public func saveDocument(_ document: Document) throws
 Save the secret to keychain
 Note: the value passed in will be zeroed out after the secret is saved
 - Parameters:
-  - id: The Id of the secret
-  - accessGroup: The access group to use to save secret.
-  - value: The value of the secret
-  - label: label of the document
+  - document: The document to save
 
 #### Parameters
 
 | Name | Description |
 | ---- | ----------- |
-| id | The Id of the secret |
-| accessGroup | The access group to use to save secret. |
-| value | The value of the secret |
-| label | label of the document |
+| document | The document to save |
 
 ### `deleteDocument(id:)`
 
@@ -113,7 +110,6 @@ public func deleteDocuments() throws
 ```
 
 Delete all documents from keychain
-Note: the value passed in will be zeroed out after the secret is deleted
 - Parameters:
   - id: The Id of the secret
 

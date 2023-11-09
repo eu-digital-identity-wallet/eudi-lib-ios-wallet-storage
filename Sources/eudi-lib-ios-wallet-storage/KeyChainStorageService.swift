@@ -25,6 +25,9 @@ public class KeyChainStorageService: DataStorageService {
 	public var serviceName: String
 	public var accessGroup: String?
 
+	/// Gets the secret document by id passed in parameter
+	/// - Parameter id: Document identifier
+	/// - Returns: The document if exists
 	public func loadDocument(id: String) throws -> Document? {
 		let query = makeQuery(id: nil, bAll: false)
 		var result: CFTypeRef?
@@ -37,10 +40,9 @@ public class KeyChainStorageService: DataStorageService {
 		let dict = result as! NSDictionary
 		return makeDocument(dict: dict)
 	}
-	/// Gets the secret with the id passed in parameter
+	/// Gets all documents
 	/// - Parameters:
-	///   - label: The label  (docType) of the secret
-	/// - Returns: The secret
+	/// - Returns: The documents stored in keychain under the serviceName
 	public func loadDocuments() throws -> [Document]? {
 		let query = makeQuery(id: nil, bAll: true)
 		var result: CFTypeRef?
@@ -58,10 +60,7 @@ public class KeyChainStorageService: DataStorageService {
 	/// Save the secret to keychain
 	/// Note: the value passed in will be zeroed out after the secret is saved
 	/// - Parameters:
-	///   - id: The Id of the secret
-	///   - accessGroup: The access group to use to save secret.
-	///   - value: The value of the secret
-	///   - label: label of the document
+	///   - document: The document to save
 	public func saveDocument(_ document: Document) throws {
 		// kSecAttrAccount is used to store the secret Id so that we can look it up later
 		// kSecAttrService is always set to serviceName to enable us to lookup all our secrets later if needed
@@ -101,7 +100,6 @@ public class KeyChainStorageService: DataStorageService {
 	}
 	
 	/// Delete all documents from keychain
-	/// Note: the value passed in will be zeroed out after the secret is deleted
 	/// - Parameters:
 	///   - id: The Id of the secret
 	public func deleteDocuments() throws {

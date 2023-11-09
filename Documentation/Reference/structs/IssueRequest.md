@@ -7,9 +7,8 @@
 - [Properties](#properties)
   - `secureKey`
   - `publicKey`
-  - `certificate`
 - [Methods](#methods)
-  - `init(certificate:savedKey:)`
+  - `init(savedKey:)`
   - `signData(_:)`
 
 ```swift
@@ -23,29 +22,23 @@ Issue request structure
 
 ### `publicKey`
 
-### `certificate`
-
-```swift
-let certificate: SecCertificate?
-```
+DER representation of public key
 
 ## Methods
-### `init(certificate:savedKey:)`
+### `init(savedKey:)`
 
 ```swift
-public init(certificate: SecCertificate? = nil, savedKey: Data? = nil) throws
+public init(savedKey: Data? = nil) throws
 ```
 
 Initialize issue request
 - Parameters:
-  - certificate: Root certificate (optional)
   - savedKey: saved key representation (optional)
 
 #### Parameters
 
 | Name | Description |
 | ---- | ----------- |
-| certificate | Root certificate (optional) |
 | savedKey | saved key representation (optional) |
 
 ### `signData(_:)`
