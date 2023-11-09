@@ -4,20 +4,26 @@
 import PackageDescription
 
 let package = Package(
-    name: "eudi-lib-ios-wallet-storage",
+    name: "WalletStorage",
+    defaultLocalization: "en",
+	platforms: [.macOS(.v12), .iOS(.v14), .watchOS(.v9)],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
-        .library(
-            name: "eudi-lib-ios-wallet-storage",
-            targets: ["eudi-lib-ios-wallet-storage"]),
+        .library( 
+            name: "WalletStorage",
+            targets: ["WalletStorage"]),
+    ],
+    dependencies: [
+         .package(url: "https://github.com/apple/swift-log.git", branch: "main"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "eudi-lib-ios-wallet-storage"),
+            name: "WalletStorage", dependencies: [
+               .product(name: "Logging", package: "swift-log")]),
         .testTarget(
-            name: "eudi-lib-ios-wallet-storageTests",
-            dependencies: ["eudi-lib-ios-wallet-storage"]),
+            name: "WalletStorageTests",
+            dependencies: ["WalletStorage"]),
     ]
 )
