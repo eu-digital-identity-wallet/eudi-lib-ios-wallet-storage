@@ -22,7 +22,11 @@ public struct IssueRequest {
 	#if os(iOS)
 	let secureKey: SecureEnclave.P256.Signing.PrivateKey
 	/// DER representation of public key
-	var publicKey: Data { secureKey.publicKey.derRepresentation }
+	public var publicKeyDer: Data { secureKey.publicKey.derRepresentation }
+	/// PEM representation of public key
+	public var publicKeyPEM: String { secureKey.publicKey.pemRepresentation }
+	/// X963 representation of public key
+	public var publicKeyX963: Data { secureKey.publicKey.x963Representation }
 	#endif
 
 	/// Initialize issue request
@@ -31,6 +35,18 @@ public struct IssueRequest {
 	public init(savedKey: Data? = nil) throws {
 	#if os(iOS)
 		secureKey = if let savedKey { try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: savedKey) } else { try SecureEnclave.P256.Signing.PrivateKey() }
+	#endif
+	}
+	
+	/// Initialize issue request with id
+	///
+	/// - Parameters:
+	///   - id: a key identifier (uuid)
+	public init(id: String, storageService: any DataStorageService) throws {
+	#if os(iOS)
+		secureKey = try SecureEnclave.P256.Signing.PrivateKey() 
+		let docKey = Document(id: id, docType: "P256", data: secureKey.dataRepresentation, createdAt: Date())
+		try storageService.saveDocument(docKey)
 	#endif
 	}
 	
