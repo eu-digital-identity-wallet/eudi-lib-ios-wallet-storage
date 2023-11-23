@@ -16,50 +16,57 @@ limitations under the License.
 
 import Foundation
 import CryptoKit
+import MdocDataModel18013
 
 /// Issue request structure
 public struct IssueRequest {
-	#if os(iOS)
-	let secureKey: SecureEnclave.P256.Signing.PrivateKey
-	/// DER representation of public key
-	public var publicKeyDer: Data { secureKey.publicKey.derRepresentation }
-	/// PEM representation of public key
-	public var publicKeyPEM: String { secureKey.publicKey.pemRepresentation }
-	/// X963 representation of public key
-	public var publicKeyX963: Data { secureKey.publicKey.x963Representation }
-	#endif
-
-	/// Initialize issue request
-	/// - Parameters:
-	///   - savedKey: saved key representation (optional)
-	public init(savedKey: Data? = nil) throws {
-	#if os(iOS)
-		secureKey = if let savedKey { try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: savedKey) } else { try SecureEnclave.P256.Signing.PrivateKey() }
-	#endif
-	}
+	public let id: String
+	public let docType: String?
+	public var keyData: Data?
+	public let privateKeyType: PrivateKeyType
 	
 	/// Initialize issue request with id
 	///
 	/// - Parameters:
 	///   - id: a key identifier (uuid)
-	public init(id: String, storageService: any DataStorageService) throws {
-	#if os(iOS)
-		secureKey = try SecureEnclave.P256.Signing.PrivateKey() 
-		let docKey = Document(id: id, docType: "P256", data: secureKey.dataRepresentation, createdAt: Date())
-		try storageService.saveDocument(docKey)
-	#endif
+	public init(id: String, docType: String? = nil, privateKeyType: PrivateKeyType = .x963EncodedP256, keyData: Data? = nil) throws {
+		self.id = id
+		self.docType = docType
+		self.privateKeyType = privateKeyType
+		if let keyData {
+			self.keyData = keyData
+			return
+		}
+		if privateKeyType == .derEncodedP256 || privateKeyType == .pemStringDataP256 || privateKeyType == .x963EncodedP256 {
+			let p256 = P256.Signing.PrivateKey()
+			self.keyData = switch privateKeyType { case .derEncodedP256: p256.derRepresentation; case .pemStringDataP256: p256.pemRepresentation.data(using: .utf8)!; case .x963EncodedP256: p256.x963Representation; default: Data() }
+		} else if privateKeyType == .secureEnclaveP256 {
+			let secureEnclaveKey = try SecureEnclave.P256.Signing.PrivateKey()
+			self.keyData = secureEnclaveKey.dataRepresentation
+		} 
 	}
 	
-	#if os(iOS)
-	/// Sign data with ``secureKey``
-	/// - Parameter data: Data to be signed
-	/// - Returns: DER representation of signture for SHA256  hash
-	func signData(_ data: Data) throws -> Data {
-		let signature: P256.Signing.ECDSASignature = try secureKey.signature(for: SHA256.hash(data: data))
-		return signature.derRepresentation
+	public func saveToStorage(_ storageService: any DataStorageService) throws {
+		// save key data to storage with id
+		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date())
+		try storageService.saveDocument(docKey, allowOverwrite: true)
 	}
-	#endif
-	//func certificateTrust(certificate: SecCertificate) -> ver
+	
+	public mutating func loadFromStorage(_ storageService: any DataStorageService, id: String) throws {
+		guard let doc = try storageService.loadDocument(id: id) else { return }
+		keyData = doc.privateKey
+	}
+	
+	public func toCoseKeyPrivate() throws -> CoseKeyPrivate {
+		guard let keyData else { fatalError("Key data not loaded") }
+		if privateKeyType == .derEncodedP256 || privateKeyType == .pemStringDataP256 || privateKeyType == .x963EncodedP256 {
+			let p256 = switch privateKeyType { case .derEncodedP256: try P256.Signing.PrivateKey(derRepresentation: keyData); case .x963EncodedP256: try P256.Signing.PrivateKey(x963Representation: keyData); case .pemStringDataP256: try P256.Signing.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!); default: P256.Signing.PrivateKey() }
+			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
+		} else {
+			let se256 = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+			return CoseKeyPrivate(publicKeyx963Data: se256.publicKey.x963Representation, secureEnclaveData: keyData)
+		}
+	}
 }
 
 

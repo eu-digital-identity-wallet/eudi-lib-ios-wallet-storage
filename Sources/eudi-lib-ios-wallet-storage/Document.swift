@@ -15,20 +15,40 @@ limitations under the License.
 */
 
 import Foundation
+import MdocDataModel18013
 
 /// wallet document structure
 public struct Document {
-	public init(id: String = UUID().uuidString, docType: String, data: Data, createdAt: Date, modifiedAt: Date? = nil) {
+	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil) {
 		self.id = id
 		self.docType = docType
+		self.docDataType = docDataType
 		self.data = data
-		self.createdAt = createdAt
+		self.privateKeyType = privateKeyType
+		self.privateKey = privateKey
+		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
 	}
 	
 	public var id: String = UUID().uuidString
 	public let docType: String
 	public let data: Data
+	public let docDataType: DocDataType
+	public let privateKeyType: PrivateKeyType?
+	public let privateKey: Data?
 	public let createdAt: Date
 	public let modifiedAt: Date?
+	
+	public func getCborData() -> (dr: DeviceResponse, dpk: CoseKeyPrivate)? {
+		switch docDataType {
+		case .signupResponseJson:
+			guard let sr = data.decodeJSON(type: SignUpResponse.self), let dr = sr.deviceResponse, let dpk = sr.devicePrivateKey else { return nil }
+			return (dr,dpk)
+		case .cbor:
+			guard let dr = DeviceResponse(data: [UInt8](data)), let privateKeyType, let privateKey, let dpk = try? IssueRequest(id: id, privateKeyType: privateKeyType, keyData: privateKey).toCoseKeyPrivate() else { return nil }
+			return (dr,dpk)
+		case .sjwt:
+			fatalError("Format \(docDataType) not implemented")
+		}
+	}
 }
