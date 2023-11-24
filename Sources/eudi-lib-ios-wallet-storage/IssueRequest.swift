@@ -29,7 +29,7 @@ public struct IssueRequest {
 	///
 	/// - Parameters:
 	///   - id: a key identifier (uuid)
-	public init(id: String, docType: String? = nil, privateKeyType: PrivateKeyType = .x963EncodedP256, keyData: Data? = nil) throws {
+	public init(id: String = UUID().uuidString, docType: String? = nil, privateKeyType: PrivateKeyType = .x963EncodedP256, keyData: Data? = nil) throws {
 		self.id = id
 		self.docType = docType
 		self.privateKeyType = privateKeyType
@@ -65,6 +65,17 @@ public struct IssueRequest {
 		} else {
 			let se256 = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
 			return CoseKeyPrivate(publicKeyx963Data: se256.publicKey.x963Representation, secureEnclaveData: keyData)
+		}
+	}
+	
+	public func getPublicKeyPEM() throws -> String {
+		guard let keyData else { fatalError("Key data not loaded") }
+		if privateKeyType == .derEncodedP256 || privateKeyType == .pemStringDataP256 || privateKeyType == .x963EncodedP256 {
+			let p256 = switch privateKeyType { case .derEncodedP256: try P256.Signing.PrivateKey(derRepresentation: keyData); case .x963EncodedP256: try P256.Signing.PrivateKey(x963Representation: keyData); case .pemStringDataP256: try P256.Signing.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!); default: P256.Signing.PrivateKey() }
+			return p256.publicKey.pemRepresentation
+		} else {
+			let se256 = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+			return se256.publicKey.pemRepresentation
 		}
 	}
 }
