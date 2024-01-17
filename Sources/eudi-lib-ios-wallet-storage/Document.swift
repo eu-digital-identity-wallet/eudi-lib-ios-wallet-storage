@@ -39,6 +39,7 @@ public struct Document {
 	public let createdAt: Date
 	public let modifiedAt: Date?
 	
+	/// get CBOR data and private key from document
 	public func getCborData() -> (dr: DeviceResponse, dpk: CoseKeyPrivate)? {
 		switch docDataType {
 		case .signupResponseJson:
