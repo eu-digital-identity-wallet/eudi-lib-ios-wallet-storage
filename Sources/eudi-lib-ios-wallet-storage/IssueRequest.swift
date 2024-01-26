@@ -37,13 +37,20 @@ public struct IssueRequest {
 			self.keyData = keyData
 			return
 		}
-		if privateKeyType == .derEncodedP256 || privateKeyType == .pemStringDataP256 || privateKeyType == .x963EncodedP256 {
-			let p256 = P256.Signing.PrivateKey()
-			self.keyData = switch privateKeyType { case .derEncodedP256: p256.derRepresentation; case .pemStringDataP256: p256.pemRepresentation.data(using: .utf8)!; case .x963EncodedP256: p256.x963Representation; default: Data() }
-		} else if privateKeyType == .secureEnclaveP256 {
-			let secureEnclaveKey = try SecureEnclave.P256.Signing.PrivateKey()
+		switch privateKeyType {
+		case .derEncodedP256:
+			let p256 = P256.KeyAgreement.PrivateKey()
+			self.keyData = p256.derRepresentation
+		case .pemStringDataP256:
+			let p256 = P256.KeyAgreement.PrivateKey()
+			self.keyData = p256.pemRepresentation.data(using: .utf8)!
+		case .x963EncodedP256:
+			let p256 = P256.KeyAgreement.PrivateKey()
+			self.keyData = p256.x963Representation
+		case .secureEnclaveP256:
+			let secureEnclaveKey = try SecureEnclave.P256.KeyAgreement.PrivateKey()
 			self.keyData = secureEnclaveKey.dataRepresentation
-		} 
+		}
 	}
 	
 	public func saveToStorage(_ storageService: any DataStorageService) throws {
@@ -59,25 +66,40 @@ public struct IssueRequest {
 	
 	public func toCoseKeyPrivate() throws -> CoseKeyPrivate {
 		guard let keyData else { fatalError("Key data not loaded") }
-		if privateKeyType == .derEncodedP256 || privateKeyType == .pemStringDataP256 || privateKeyType == .x963EncodedP256 {
-			let p256 = switch privateKeyType { case .derEncodedP256: try P256.Signing.PrivateKey(derRepresentation: keyData); case .x963EncodedP256: try P256.Signing.PrivateKey(x963Representation: keyData); case .pemStringDataP256: try P256.Signing.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!); default: P256.Signing.PrivateKey() }
+		switch privateKeyType {
+		case .derEncodedP256:
+			let p256 = try P256.KeyAgreement.PrivateKey(derRepresentation: keyData)
 			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
-		} else {
-			let se256 = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
-			return CoseKeyPrivate(publicKeyx963Data: se256.publicKey.x963Representation, secureEnclaveData: keyData)
+		case .x963EncodedP256:
+			let p256 = try P256.KeyAgreement.PrivateKey(x963Representation: keyData)
+			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
+		case .pemStringDataP256:
+			let p256 = try P256.KeyAgreement.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!)
+			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
+		case .secureEnclaveP256:
+			let se256 = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: keyData)
+			return CoseKeyPrivate(publicKeyx963Data: se256.publicKey.x963Representation, secureEnclaveKeyID: keyData)
 		}
 	}
 	
 	public func getPublicKeyPEM() throws -> String {
 		guard let keyData else { fatalError("Key data not loaded") }
-		if privateKeyType == .derEncodedP256 || privateKeyType == .pemStringDataP256 || privateKeyType == .x963EncodedP256 {
-			let p256 = switch privateKeyType { case .derEncodedP256: try P256.Signing.PrivateKey(derRepresentation: keyData); case .x963EncodedP256: try P256.Signing.PrivateKey(x963Representation: keyData); case .pemStringDataP256: try P256.Signing.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!); default: P256.Signing.PrivateKey() }
+		switch privateKeyType {
+		case .derEncodedP256:
+			let p256 = try P256.KeyAgreement.PrivateKey(derRepresentation: keyData)
 			return p256.publicKey.pemRepresentation
-		} else {
-			let se256 = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyData)
+		case .pemStringDataP256:
+			let p256 = try P256.KeyAgreement.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!)
+			return p256.publicKey.pemRepresentation
+		case .x963EncodedP256:
+			let p256 = try P256.KeyAgreement.PrivateKey(x963Representation: keyData)
+			return p256.publicKey.pemRepresentation
+		case .secureEnclaveP256:
+			let se256 = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: keyData)
 			return se256.publicKey.pemRepresentation
 		}
 	}
+	
 }
 
 
