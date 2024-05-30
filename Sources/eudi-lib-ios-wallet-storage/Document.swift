@@ -40,14 +40,15 @@ public struct Document {
 	public let modifiedAt: Date?
 	
 	/// get CBOR data and private key from document
-	public func getCborData() -> (iss: IssuerSigned, dpk: CoseKeyPrivate)? {
+	public func getCborData() -> (iss: (String, IssuerSigned), dpk: (String, CoseKeyPrivate))? {
 		switch docDataType {
 		case .signupResponseJson:
 			guard let sr = data.decodeJSON(type: SignUpResponse.self), let dr = sr.deviceResponse, let iss = dr.documents?.first?.issuerSigned, let dpk = sr.devicePrivateKey else { return nil }
-			return (iss, dpk)
+			let randomId = UUID().uuidString
+			return ((randomId, iss), (randomId, dpk))
 		case .cbor:
 			guard let iss = IssuerSigned(data: [UInt8](data)), let privateKeyType, let privateKey, let dpk = try? IssueRequest(id: id, privateKeyType: privateKeyType, keyData: privateKey).toCoseKeyPrivate() else { return nil }
-			return (iss, dpk)
+			return ((id, iss), (id, dpk))
 		case .sjwt:
 			fatalError("Format \(docDataType) not implemented")
 		}
