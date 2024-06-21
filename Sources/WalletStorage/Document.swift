@@ -51,6 +51,8 @@ public struct Document {
 			return ((id, iss), (id, dpk))
 		case .sjwt:
 			fatalError("Format \(docDataType) not implemented")
+		case .deferred:
+			return nil
 		}
 	}
 }

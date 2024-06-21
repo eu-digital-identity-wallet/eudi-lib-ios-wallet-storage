@@ -26,10 +26,12 @@ public enum SavedKeyChainDataType{
 /// ``cbor``: DeviceResponse cbor encoded
 /// ``sjwt``: sd-jwt ** not yet supported **
 /// ``signupResponseJson``: DeviceResponse and PrivateKey json serialized
+/// ``deferred``: Deferred issuance
 public enum DocDataType: String  {
 	case cbor = "cbor"
 	case sjwt = "sjwt"
 	case signupResponseJson = "srjs"
+	case deferred = "defr"
 }
 
 /// Format of private key
@@ -43,3 +45,5 @@ public enum PrivateKeyType: String {
 	case x963EncodedP256 = "x9p2"
 	case secureEnclaveP256 = "sep2"
 }
+
+
