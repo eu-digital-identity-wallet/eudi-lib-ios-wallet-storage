@@ -14,6 +14,7 @@ let package = Package(
             targets: ["WalletStorage"]),
     ],
     dependencies: [
+   		.package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.3"),
 		.package(url: "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model.git", from: "0.2.5"),
 		],
