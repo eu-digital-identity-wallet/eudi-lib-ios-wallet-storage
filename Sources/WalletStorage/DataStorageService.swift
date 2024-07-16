@@ -20,10 +20,9 @@ import Foundation
 public protocol DataStorageService {
 	var serviceName: String { get set }
 	var accessGroup: String? { get set }
-	func loadDocument(id: String) throws -> Document?
-	func loadDocuments() throws -> [Document]?
+	func loadDocument(id: String, status: DocumentStatus) throws -> Document?
+	func loadDocuments(status: DocumentStatus) throws -> [Document]?
 	func saveDocument(_ document: Document, allowOverwrite: Bool) throws
-	func saveDocumentData(_ document: Document, dataToSaveType: SavedKeyChainDataType, dataType: String, allowOverwrite: Bool) throws 
-	func deleteDocument(id: String) throws
-	func deleteDocuments() throws
+	func deleteDocument(id: String, status: DocumentStatus) throws
+	func deleteDocuments(status: DocumentStatus) throws
 }
