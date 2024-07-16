@@ -17,21 +17,22 @@ limitations under the License.
 import Foundation
 
 /// type of data to save in storage
-public enum SavedKeyChainDataType{
-	case doc
-	case key
+/// ``doc``: Document data
+/// ``key``: Private-key
+public enum SavedKeyChainDataType: String {
+	case doc = "sdoc"
+	case key = "skey"
 }
 
 /// Format of document data
 /// ``cbor``: DeviceResponse cbor encoded
 /// ``sjwt``: sd-jwt ** not yet supported **
 /// ``signupResponseJson``: DeviceResponse and PrivateKey json serialized
-/// ``deferred``: Deferred issuance
-public enum DocDataType: String  {
+/// ``deferred``: Deferred issuance data
+public enum DocDataType: String {
 	case cbor = "cbor"
 	case sjwt = "sjwt"
 	case signupResponseJson = "srjs"
-	case deferred = "defr"
 }
 
 /// Format of private key
@@ -47,3 +48,8 @@ public enum PrivateKeyType: String {
 }
 
 
+/// document status
+public enum DocumentStatus: String {
+	case issued
+	case deferred
+}
