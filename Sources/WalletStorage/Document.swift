@@ -19,7 +19,7 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document {
-	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil) {
+	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataType = docDataType
@@ -28,6 +28,7 @@ public struct Document {
 		self.privateKey = privateKey
 		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
+		self.status = status
 	}
 	
 	public var id: String = UUID().uuidString
@@ -38,6 +39,8 @@ public struct Document {
 	public let privateKey: Data?
 	public let createdAt: Date
 	public let modifiedAt: Date?
+	public let status: DocumentStatus
+	public var isDeferred: Bool { status == .deferred }
 	
 	/// get CBOR data and private key from document
 	public func getCborData() -> (iss: (String, IssuerSigned), dpk: (String, CoseKeyPrivate))? {
@@ -51,8 +54,6 @@ public struct Document {
 			return ((id, iss), (id, dpk))
 		case .sjwt:
 			fatalError("Format \(docDataType) not implemented")
-		case .deferred:
-			return nil
 		}
 	}
 }

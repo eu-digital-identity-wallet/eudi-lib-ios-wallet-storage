@@ -53,14 +53,14 @@ public struct IssueRequest {
 		}
 	}
 	
-	public func saveToStorage(_ storageService: any DataStorageService) throws {
+	public func saveToStorage(_ storageService: any DataStorageService, status: DocumentStatus) throws {
 		// save key data to storage with id
-		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date())
+		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), status: status)
 		try storageService.saveDocument(docKey, allowOverwrite: true)
 	}
 	
-	public init?(_ storageService: any DataStorageService, id: String) throws {
-		guard let doc = try storageService.loadDocument(id: id), let pk = doc.privateKey, let pkt = doc.privateKeyType else { return nil }
+	public init?(_ storageService: any DataStorageService, id: String, status: DocumentStatus) throws {
+		guard let doc = try storageService.loadDocument(id: id, status: status), let pk = doc.privateKey, let pkt = doc.privateKeyType else { return nil }
 		self.id = id
 		keyData = pk
 		privateKeyType = pkt
