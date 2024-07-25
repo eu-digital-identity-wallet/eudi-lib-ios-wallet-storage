@@ -47,9 +47,9 @@ public enum PrivateKeyType: String {
 	case secureEnclaveP256 = "sep2"
 }
 
-
 /// document status
 public enum DocumentStatus: String {
 	case issued
 	case deferred
+	case pending
 }
