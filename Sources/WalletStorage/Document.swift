@@ -19,7 +19,7 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document {
-	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil, status: DocumentStatus) {
+	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataType = docDataType
@@ -28,6 +28,7 @@ public struct Document {
 		self.privateKey = privateKey
 		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
+		self.displayName = displayName
 		self.status = status
 	}
 	
@@ -39,6 +40,7 @@ public struct Document {
 	public let privateKey: Data?
 	public let createdAt: Date
 	public let modifiedAt: Date?
+	public let displayName: String?
 	public let status: DocumentStatus
 	public var isDeferred: Bool { status == .deferred }
 	

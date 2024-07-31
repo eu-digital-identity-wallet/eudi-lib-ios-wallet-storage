@@ -55,7 +55,7 @@ public struct IssueRequest {
 	
 	public func saveToStorage(_ storageService: any DataStorageService, status: DocumentStatus) throws {
 		// save key data to storage with id
-		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), status: status)
+		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), displayName: nil, status: status)
 		try storageService.saveDocument(docKey, allowOverwrite: true)
 	}
 	
