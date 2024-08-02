@@ -35,6 +35,7 @@ public struct IssueRequest {
 		self.privateKeyType = privateKeyType
 		if let keyData {
 			self.keyData = keyData
+			// key-data already created, exit
 			return
 		}
 		switch privateKeyType {
@@ -51,10 +52,13 @@ public struct IssueRequest {
 			let secureEnclaveKey = try SecureEnclave.P256.KeyAgreement.PrivateKey() 
 			self.keyData = secureEnclaveKey.dataRepresentation
 		}
+		logger.info("Created private key of type \(privateKeyType)")
+		if let docType { logger.info(" and docType: \(docType)") }
 	}
 	
 	public func saveToStorage(_ storageService: any DataStorageService, status: DocumentStatus) throws {
 		// save key data to storage with id
+		logger.info("Saving Issue request with id: \(id) and document status: \(status)")
 		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), displayName: nil, status: status)
 		try storageService.saveDocument(docKey, allowOverwrite: true)
 	}
