@@ -32,10 +32,12 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
 	public func loadDocument(id: String, status: DocumentStatus) throws -> Document? {
-		try loadDocuments(id: id, status: status)?.first
+		logger.info("Load document with status: \(status), id: \(id)")
+		return try loadDocuments(id: id, status: status)?.first
 	}
 	public func loadDocuments(status: DocumentStatus) throws -> [Document]? {
-		try loadDocuments(id: nil, status: status)
+		logger.info("Load documents with status: \(status)")
+		return try loadDocuments(id: nil, status: status)
 	}
 	// use is-negative to denote type of data
 	static func isDocumentDataRow(_ d: [String: Any]) -> Bool { if let b = d[kSecAttrIsNegative as String] as? Bool { !b } else { true } }
@@ -59,6 +61,7 @@ public class KeyChainStorageService: DataStorageService {
 		if status == errSecItemNotFound { return nil }
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
+			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 		var res = result as! [[String: Any]]
@@ -103,6 +106,7 @@ public class KeyChainStorageService: DataStorageService {
 	public func saveDocumentData(_ document: Document, dataToSaveType: SavedKeyChainDataType, dataType: String, allowOverwrite: Bool = true) throws {
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
+		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType), displayName: \(document.displayName ?? "")")
 		guard dataType.count == 4 else { throw StorageError(description: "Invalid type") }
 		if dataToSaveType == .key && document.privateKey == nil { throw StorageError(description: "Private key not available") }
 		var query: [String: Any] = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: dataToSaveType)
@@ -124,6 +128,7 @@ public class KeyChainStorageService: DataStorageService {
 		}
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
+			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 	}
@@ -133,6 +138,7 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	///   - id: The Id of the secret
 	public func deleteDocument(id: String, status: DocumentStatus) throws {
+		logger.info("Delete document with status: \(status), id: \(id)")
 		try deleteDocumentData(id: id, docStatus: status)
 	}
 	
@@ -140,7 +146,10 @@ public class KeyChainStorageService: DataStorageService {
 		let query: [String: Any] = makeQuery(id: id, bForSave: true, status: docStatus, dataType: dataType)
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
-		guard status == errSecSuccess else { throw StorageError(description: statusMessage ?? "", code: Int(status)) }
+		guard status == errSecSuccess else { 
+			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
+		}
 		if dataType == .doc { try deleteDocumentData(id: id, docStatus: docStatus, dataType: .key) }
 	}
 	
@@ -148,6 +157,7 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	///   - id: The Id of the secret
 	public func deleteDocuments(status: DocumentStatus) throws {
+		logger.info("Delete documents with status: \(status)")
 		try deleteDocumentData(id: nil, docStatus: status)
 	}
 	
