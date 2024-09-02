@@ -52,4 +52,5 @@ public enum PrivateKeyType: String {
 public enum DocumentStatus: String {
 	case issued
 	case deferred
+	case pending
 }
