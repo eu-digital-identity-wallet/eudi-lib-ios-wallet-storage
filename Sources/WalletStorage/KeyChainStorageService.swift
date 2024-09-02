@@ -146,7 +146,10 @@ public class KeyChainStorageService: DataStorageService {
 		let query: [String: Any] = makeQuery(id: id, bForSave: true, status: docStatus, dataType: dataType)
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
-		guard status == errSecSuccess else { 
+		if status == errSecItemNotFound, id == nil {
+			let msg = statusMessage ?? "No items found"
+			logger.warning("\(msg)")
+		} else if status != errSecSuccess {
 			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}

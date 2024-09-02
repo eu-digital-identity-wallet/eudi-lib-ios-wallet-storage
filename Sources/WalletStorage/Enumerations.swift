@@ -49,7 +49,7 @@ public enum PrivateKeyType: String {
 
 
 /// document status
-public enum DocumentStatus: String {
+public enum DocumentStatus: String, CaseIterable {
 	case issued
 	case deferred
 	case pending
