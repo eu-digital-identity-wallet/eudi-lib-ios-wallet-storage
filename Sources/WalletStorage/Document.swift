@@ -18,7 +18,7 @@ import Foundation
 import MdocDataModel18013
 
 /// wallet document structure
-public struct Document {
+public struct Document: DocumentProtocol {
 	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
@@ -42,6 +42,7 @@ public struct Document {
 	public let modifiedAt: Date?
 	public let displayName: String?
 	public let status: DocumentStatus
+	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
 	
 	/// get CBOR data and private key from document
