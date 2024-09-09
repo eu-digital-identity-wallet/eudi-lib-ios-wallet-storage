@@ -32,10 +32,12 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
 	public func loadDocument(id: String, status: DocumentStatus) throws -> Document? {
-		try loadDocuments(id: id, status: status)?.first
+		logger.info("Load document with status: \(status), id: \(id)")
+		return try loadDocuments(id: id, status: status)?.first
 	}
 	public func loadDocuments(status: DocumentStatus) throws -> [Document]? {
-		try loadDocuments(id: nil, status: status)
+		logger.info("Load documents with status: \(status)")
+		return try loadDocuments(id: nil, status: status)
 	}
 	// use is-negative to denote type of data
 	static func isDocumentDataRow(_ d: [String: Any]) -> Bool { if let b = d[kSecAttrIsNegative as String] as? Bool { !b } else { true } }
@@ -52,23 +54,20 @@ public class KeyChainStorageService: DataStorageService {
 		return documents
 	}
 	
-	func loadDocumentsData(id: String?, docStatus: DocumentStatus, dataToLoadType: SavedKeyChainDataType = .doc, bCompatOldVersion: Bool = false) throws -> [[String: Any]]? {
-		var query = makeQuery(id: id, bForSave: false, status: docStatus, dataType: dataToLoadType)
-		if bCompatOldVersion { query[kSecAttrService as String] = if dataToLoadType == .doc { serviceName } else { serviceName + "_key" } } // to be removed in version 1
+	func loadDocumentsData(id: String?, docStatus: DocumentStatus, dataToLoadType: SavedKeyChainDataType = .doc) throws -> [[String: Any]]? {
+		let query = makeQuery(id: id, bForSave: false, status: docStatus, dataType: dataToLoadType)
 		var result: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &result)
 		if status == errSecItemNotFound { return nil }
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
+			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 		var res = result as! [[String: Any]]
-		if !bCompatOldVersion, dataToLoadType == .doc {
-			if let dicts2 = try loadDocumentsData(id: id, docStatus: docStatus, dataToLoadType: .key, bCompatOldVersion: bCompatOldVersion) { res.append(contentsOf: dicts2) }
+		if dataToLoadType == .doc {
+			if let dicts2 = try loadDocumentsData(id: id, docStatus: docStatus, dataToLoadType: .key) { res.append(contentsOf: dicts2) }
 		}
-		// following lines to be removed in version 1
-		if !bCompatOldVersion, dataToLoadType == .doc { if let dicts1 = try loadDocumentsData(id: id, docStatus: docStatus, dataToLoadType: .doc, bCompatOldVersion: true) { res.append(contentsOf: dicts1) } }
-		if !bCompatOldVersion, dataToLoadType == .key { if let dicts2 = try loadDocumentsData(id: id, docStatus: docStatus, dataToLoadType: .key, bCompatOldVersion: true) {dicts2.forEach { d in var d2 = d; d2[kSecAttrIsNegative as String] = true; res.append(d2) } } }
 		return res
 	}
 	
@@ -107,6 +106,7 @@ public class KeyChainStorageService: DataStorageService {
 	public func saveDocumentData(_ document: Document, dataToSaveType: SavedKeyChainDataType, dataType: String, allowOverwrite: Bool = true) throws {
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
+		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType), displayName: \(document.displayName ?? "")")
 		guard dataType.count == 4 else { throw StorageError(description: "Invalid type") }
 		if dataToSaveType == .key && document.privateKey == nil { throw StorageError(description: "Private key not available") }
 		var query: [String: Any] = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: dataToSaveType)
@@ -117,15 +117,18 @@ public class KeyChainStorageService: DataStorageService {
 		// use this attribute to differentiate between document and key data
 		query[kSecAttrIsNegative as String] = Self.getIsNegativeValueToUse(dataToSaveType)
 		query[kSecAttrLabel as String] = document.docType
+		if let dn = document.displayName { query[kSecAttrDescription as String] = dn }
 		query[kSecAttrType as String] = dataType
 		var status = SecItemAdd(query as CFDictionary, nil)
 		if allowOverwrite && status == errSecDuplicateItem {
-			let updated: [String: Any] = [kSecValueData: query[kSecValueData as String] as! Data, kSecAttrIsNegative: Self.getIsNegativeValueToUse(dataToSaveType), kSecAttrLabel: document.docType, kSecAttrType: dataType] as [String: Any]
+			var updated: [String: Any] = [kSecValueData: query[kSecValueData as String] as! Data, kSecAttrIsNegative: Self.getIsNegativeValueToUse(dataToSaveType), kSecAttrLabel: document.docType, kSecAttrDescription: document.displayName ?? "", kSecAttrType: dataType] as [String: Any]
+			if let dn = document.displayName { updated[kSecAttrDescription as String] = dn }
 			query = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: dataToSaveType)
 			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
 		}
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		guard status == errSecSuccess else {
+			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 	}
@@ -135,6 +138,7 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	///   - id: The Id of the secret
 	public func deleteDocument(id: String, status: DocumentStatus) throws {
+		logger.info("Delete document with status: \(status), id: \(id)")
 		try deleteDocumentData(id: id, docStatus: status)
 	}
 	
@@ -142,7 +146,13 @@ public class KeyChainStorageService: DataStorageService {
 		let query: [String: Any] = makeQuery(id: id, bForSave: true, status: docStatus, dataType: dataType)
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
-		guard status == errSecSuccess else { throw StorageError(description: statusMessage ?? "", code: Int(status)) }
+		if status == errSecItemNotFound, id == nil {
+			let msg = statusMessage ?? "No items found"
+			logger.warning("\(msg)")
+		} else if status != errSecSuccess {
+			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
+			throw StorageError(description: statusMessage ?? "", code: Int(status))
+		}
 		if dataType == .doc { try deleteDocumentData(id: id, docStatus: docStatus, dataType: .key) }
 	}
 	
@@ -150,6 +160,7 @@ public class KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	///   - id: The Id of the secret
 	public func deleteDocuments(status: DocumentStatus) throws {
+		logger.info("Delete documents with status: \(status)")
 		try deleteDocumentData(id: nil, docStatus: status)
 	}
 	
@@ -164,6 +175,6 @@ public class KeyChainStorageService: DataStorageService {
 			keyType = PrivateKeyType(rawValue: dict2[kSecAttrType as String] as? String ?? PrivateKeyType.derEncodedP256.rawValue)!
 			privateKeyData = (dict2[kSecValueData as String] as! Data)
 		}
-		return Document(id: dict1[kSecAttrAccount as String] as! String, docType: dict1[kSecAttrLabel as String] as? String ?? "", docDataType: DocDataType(rawValue: dict1[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, privateKeyType: keyType, privateKey: privateKeyData, createdAt: (dict1[kSecAttrCreationDate as String] as! Date), modifiedAt: dict1[kSecAttrModificationDate as String] as? Date, status: status)
+		return Document(id: dict1[kSecAttrAccount as String] as! String, docType: dict1[kSecAttrLabel as String] as? String ?? "", docDataType: DocDataType(rawValue: dict1[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, privateKeyType: keyType, privateKey: privateKeyData, createdAt: (dict1[kSecAttrCreationDate as String] as! Date), modifiedAt: dict1[kSecAttrModificationDate as String] as? Date, displayName: dict1[kSecAttrDescription as String] as? String, status: status)
 	}
 }
