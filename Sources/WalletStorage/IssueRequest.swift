@@ -19,7 +19,7 @@ import CryptoKit
 import MdocDataModel18013
 
 /// Issue request structure
-public struct IssueRequest {
+public struct IssueRequest: Sendable {
 	public var id: String
 	public var docType: String?
 	public var keyData: Data
