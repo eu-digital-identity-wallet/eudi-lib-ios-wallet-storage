@@ -18,7 +18,7 @@ import Foundation
 /// Implements key-chain storage
 /// Documents are saved as a pair of generic password items (document data and private key)
 /// For implementation details see [Apple documentation](https://developer.apple.com/documentation/security/ksecclassgenericpassword)
-public class KeyChainStorageService: DataStorageService {
+public actor KeyChainStorageService: DataStorageService {
 	
 	public init(serviceName: String, accessGroup: String? = nil) {
 		self.serviceName = serviceName

@@ -18,11 +18,9 @@ import Foundation
 
 /// Data storage protocol
 public protocol DataStorageService {
-	var serviceName: String { get set }
-	var accessGroup: String? { get set }
-	func loadDocument(id: String, status: DocumentStatus) throws -> Document?
-	func loadDocuments(status: DocumentStatus) throws -> [Document]?
-	func saveDocument(_ document: Document, allowOverwrite: Bool) throws
-	func deleteDocument(id: String, status: DocumentStatus) throws
-	func deleteDocuments(status: DocumentStatus) throws
+	func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
+	func loadDocuments(status: DocumentStatus) async throws -> [Document]?
+	func saveDocument(_ document: Document, allowOverwrite: Bool) async throws
+	func deleteDocument(id: String, status: DocumentStatus) async throws
+	func deleteDocuments(status: DocumentStatus) async throws
 }
