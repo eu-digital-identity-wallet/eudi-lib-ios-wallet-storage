@@ -17,7 +17,7 @@ limitations under the License.
 import Foundation
 
 /// Data storage protocol
-public protocol DataStorageService {
+public protocol DataStorageService: Actor {
 	func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
 	func loadDocuments(status: DocumentStatus) async throws -> [Document]?
 	func saveDocument(_ document: Document, allowOverwrite: Bool) async throws
