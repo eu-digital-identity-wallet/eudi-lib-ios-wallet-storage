@@ -19,7 +19,7 @@ import Foundation
 /// type of data to save in storage
 /// ``doc``: Document data
 /// ``key``: Private-key
-public enum SavedKeyChainDataType: String {
+public enum SavedKeyChainDataType: String, Sendable {
 	case doc = "sdoc"
 	case key = "skey"
 }
@@ -29,7 +29,7 @@ public enum SavedKeyChainDataType: String {
 /// ``sjwt``: sd-jwt ** not yet supported **
 /// ``signupResponseJson``: DeviceResponse and PrivateKey json serialized
 /// ``deferred``: Deferred issuance data
-public enum DocDataType: String {
+public enum DocDataType: String, Sendable {
 	case cbor = "cbor"
 	case sjwt = "sjwt"
 	case signupResponseJson = "srjs"
@@ -40,7 +40,7 @@ public enum DocDataType: String {
 /// ``pemStringDataP256`` PEM string encoded as utf8
 /// ``x963EncodedP256``: ANSI x9.63 representation (default)
 /// ``secureEnclaveP256``: data representation for the secure enclave
-public enum PrivateKeyType: String {
+public enum PrivateKeyType: String, Sendable {
 	case derEncodedP256 = "dep2"
 	case pemStringDataP256 = "pep2"
 	case x963EncodedP256 = "x9p2"
@@ -49,7 +49,7 @@ public enum PrivateKeyType: String {
 
 
 /// document status
-public enum DocumentStatus: String, CaseIterable {
+public enum DocumentStatus: String, CaseIterable, Sendable {
 	case issued
 	case deferred
 	case pending

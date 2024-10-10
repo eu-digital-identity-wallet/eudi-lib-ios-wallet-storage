@@ -19,7 +19,7 @@ import CryptoKit
 import MdocDataModel18013
 
 /// Issue request structure
-public struct IssueRequest {
+public struct IssueRequest: Sendable {
 	public var id: String
 	public var docType: String?
 	public var keyData: Data
@@ -56,15 +56,15 @@ public struct IssueRequest {
 		if let docType { logger.info(" and docType: \(docType)") }
 	}
 	
-	public func saveToStorage(_ storageService: any DataStorageService, status: DocumentStatus) throws {
+	public func saveTo(storageService: any DataStorageService, status: DocumentStatus) async throws {
 		// save key data to storage with id
 		logger.info("Saving Issue request with id: \(id) and document status: \(status)")
 		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), displayName: nil, status: status)
-		try storageService.saveDocument(docKey, allowOverwrite: true)
+		try await storageService.saveDocument(docKey, allowOverwrite: true)
 	}
 	
-	public init?(_ storageService: any DataStorageService, id: String, status: DocumentStatus) throws {
-		guard let doc = try storageService.loadDocument(id: id, status: status), let pk = doc.privateKey, let pkt = doc.privateKeyType else { return nil }
+	public mutating func loadFrom(storageService: any DataStorageService, id: String, status: DocumentStatus) async throws {
+		guard let doc = try await storageService.loadDocument(id: id, status: status), let pk = doc.privateKey, let pkt = doc.privateKeyType else { return }
 		self.id = id
 		keyData = pk
 		privateKeyType = pkt

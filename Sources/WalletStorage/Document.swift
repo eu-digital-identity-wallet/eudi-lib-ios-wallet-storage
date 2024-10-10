@@ -18,7 +18,7 @@ import Foundation
 import MdocDataModel18013
 
 /// wallet document structure
-public struct Document: DocumentProtocol {
+public struct Document: DocumentProtocol, Sendable {
 	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
