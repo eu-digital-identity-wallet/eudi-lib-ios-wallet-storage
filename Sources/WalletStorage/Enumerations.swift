@@ -22,6 +22,7 @@ import Foundation
 public enum SavedKeyChainDataType: String, Sendable {
 	case doc = "sdoc"
 	case key = "skey"
+	case keyInfo = "skei"
 }
 
 /// Format of document data
