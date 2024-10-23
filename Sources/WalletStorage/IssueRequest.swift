@@ -39,12 +39,6 @@ public struct IssueRequest: Sendable {
 			return
 		}
 		switch privateKeyType {
-		case .derEncodedP256:
-			let p256 = P256.KeyAgreement.PrivateKey()
-			self.keyData = p256.derRepresentation
-		case .pemStringDataP256:
-			let p256 = P256.KeyAgreement.PrivateKey()
-			self.keyData = p256.pemRepresentation.data(using: .utf8)!
 		case .x963EncodedP256:
 			let p256 = P256.KeyAgreement.PrivateKey()
 			self.keyData = p256.x963Representation
@@ -72,14 +66,8 @@ public struct IssueRequest: Sendable {
 	
 	public func toCoseKeyPrivate() throws -> CoseKeyPrivate {
 		switch privateKeyType {
-		case .derEncodedP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(derRepresentation: keyData)
-			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .P256)
 		case .x963EncodedP256:
 			let p256 = try P256.KeyAgreement.PrivateKey(x963Representation: keyData)
-			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .P256)
-		case .pemStringDataP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!)
 			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .P256)
 		case .secureEnclaveP256:
 			let se256 = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: keyData)

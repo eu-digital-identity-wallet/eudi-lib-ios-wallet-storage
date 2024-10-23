@@ -114,9 +114,7 @@ public actor KeyChainStorageService: DataStorageService {
 		guard dataType.count == 4 else { throw StorageError(description: "Invalid type") }
 		if dataToSaveType == .key && document.privateKey == nil { throw StorageError(description: "Private key not available") }
 		var query: [String: Any] = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: dataToSaveType)
-		#if os(macOS)
 		query[kSecUseDataProtectionKeychain as String] = true
-	   #endif
 		query[kSecValueData as String] = switch dataToSaveType { case .key: document.privateKey!; default: document.data }
 		// use this attribute to differentiate between document and key data
 		query[kSecAttrIsNegative as String] = Self.getIsNegativeValueToUse(dataToSaveType)
@@ -176,7 +174,7 @@ public actor KeyChainStorageService: DataStorageService {
 		defer { let c = data.count; data.withUnsafeMutableBytes { memset_s($0.baseAddress, c, 0, c); return } }
 		var keyType: PrivateKeyType? = nil; var privateKeyData: Data? = nil
 		if let dict2 {
-			keyType = PrivateKeyType(rawValue: dict2[kSecAttrType as String] as? String ?? PrivateKeyType.derEncodedP256.rawValue)!
+			keyType = PrivateKeyType(rawValue: dict2[kSecAttrType as String] as? String ?? PrivateKeyType.secureEnclaveP256.rawValue)!
 			privateKeyData = (dict2[kSecValueData as String] as! Data)
 		}
 		return Document(id: dict1[kSecAttrAccount as String] as! String, docType: dict1[kSecAttrLabel as String] as? String ?? "", docDataType: DocDataType(rawValue: dict1[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, privateKeyType: keyType, privateKey: privateKeyData, createdAt: (dict1[kSecAttrCreationDate as String] as! Date), modifiedAt: dict1[kSecAttrModificationDate as String] as? Date, displayName: dict1[kSecAttrDescription as String] as? String, status: status)

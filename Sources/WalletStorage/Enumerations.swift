@@ -37,14 +37,10 @@ public enum DocDataType: String, Sendable {
 }
 
 /// Format of private key
-/// ``derEncodedP256``: DER encoded
-/// ``pemStringDataP256`` PEM string encoded as utf8
 /// ``x963EncodedP256``: ANSI x9.63 representation (default)
 /// ``secureEnclaveP256``: data representation for the secure enclave
 public enum PrivateKeyType: String, Sendable {
-	case derEncodedP256 = "dep2"
-	case pemStringDataP256 = "pep2"
-	case x963EncodedP256 = "x9p2"
+	case x963EncodedP256 = "p256"
 	case secureEnclaveP256 = "sep2"
 }
 
