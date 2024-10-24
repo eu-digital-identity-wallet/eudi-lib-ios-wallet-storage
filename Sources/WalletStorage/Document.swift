@@ -19,13 +19,12 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document: DocumentProtocol, Sendable {
-	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, privateKeyType: PrivateKeyType?, privateKey: Data?, createdAt: Date?, modifiedAt: Date? = nil, displayName: String?, status: DocumentStatus) {
+	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataType = docDataType
 		self.data = data
-		self.privateKeyType = privateKeyType
-		self.privateKey = privateKey
+		self.secureAreaName = secureAreaName
 		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
 		self.displayName = displayName
@@ -36,8 +35,7 @@ public struct Document: DocumentProtocol, Sendable {
 	public let docType: String
 	public let data: Data
 	public let docDataType: DocDataType
-	public let privateKeyType: PrivateKeyType?
-	public let privateKey: Data?
+	public let secureAreaName: String?
 	public let createdAt: Date
 	public let modifiedAt: Date?
 	public let displayName: String?
@@ -53,7 +51,7 @@ public struct Document: DocumentProtocol, Sendable {
 			let randomId = UUID().uuidString
 			return ((randomId, iss), (randomId, dpk))
 		case .cbor:
-			guard let iss = IssuerSigned(data: [UInt8](data)), let privateKeyType, let privateKey, let dpk = try? IssueRequest(id: id, privateKeyType: privateKeyType, keyData: privateKey).toCoseKeyPrivate() else { return nil }
+			guard let iss = IssuerSigned(data: [UInt8](data)), let dpk = try? IssueRequest(id: id, secureAreaName: secureAreaName).coseKeyPrivate else { return nil }
 			return ((id, iss), (id, dpk))
 		case .sjwt:
 			fatalError("Format \(docDataType) not implemented")

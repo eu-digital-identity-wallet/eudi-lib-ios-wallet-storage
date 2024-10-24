@@ -22,17 +22,17 @@ import MdocDataModel18013
 public struct IssueRequest: Sendable {
 	public var id: String
 	public var docType: String?
-	public var keyData: Data
-	public var privateKeyType: PrivateKeyType
-	
+	public var secureAreaName: String?
+	public var coseKeyPrivate: CoseKeyPrivate?
 	/// Initialize issue request with id
 	///
 	/// - Parameters:
 	///   - id: a key identifier (uuid)
-	public init(id: String = UUID().uuidString, docType: String? = nil, privateKeyType: PrivateKeyType = .secureEnclaveP256, keyData: Data? = nil) throws {
+	public init(id: String = UUID().uuidString, docType: String? = nil, secureAreaName: String? = nil) throws {
 		self.id = id
 		self.docType = docType
-		self.privateKeyType = privateKeyType
+		self.secureAreaName = secureAreaName
+		/*
 		if let keyData {
 			self.keyData = keyData
 			// key-data already created, exit
@@ -48,22 +48,17 @@ public struct IssueRequest: Sendable {
 		}
 		logger.info("Created private key of type \(privateKeyType)")
 		if let docType { logger.info(" and docType: \(docType)") }
+		*/
 	}
 	
 	public func saveTo(storageService: any DataStorageService, status: DocumentStatus) async throws {
 		// save key data to storage with id
 		logger.info("Saving Issue request with id: \(id) and document status: \(status)")
-		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), displayName: nil, status: status)
-		try await storageService.saveDocument(docKey, allowOverwrite: true)
+		//let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), displayName: nil, status: status)
+		//try await storageService.saveDocument(docKey, allowOverwrite: true)
 	}
-	
-	public mutating func loadFrom(storageService: any DataStorageService, id: String, status: DocumentStatus) async throws {
-		guard let doc = try await storageService.loadDocument(id: id, status: status), let pk = doc.privateKey, let pkt = doc.privateKeyType else { return }
-		self.id = id
-		keyData = pk
-		privateKeyType = pkt
-	}
-	
+
+	/*
 	public func toCoseKeyPrivate() throws -> CoseKeyPrivate {
 		switch privateKeyType {
 		case .x963EncodedP256:
@@ -74,6 +69,7 @@ public struct IssueRequest: Sendable {
 			return CoseKeyPrivate(publicKeyx963Data: se256.publicKey.x963Representation, secureEnclaveKeyID: keyData)
 		}
 	}
+	*/
 	
 	
 }

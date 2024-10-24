@@ -15,10 +15,11 @@
  */
 
 import Foundation
+import MdocDataModel18013
 /// Implements key-chain storage
 /// Documents are saved as a pair of generic password items (document data and private key)
 /// For implementation details see [Apple documentation](https://developer.apple.com/documentation/security/ksecclassgenericpassword)
-public actor KeyChainStorageService: DataStorageService {
+public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 
 	public init(serviceName: String, accessGroup: String? = nil) {
 		self.serviceName = serviceName
@@ -51,10 +52,8 @@ public actor KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	/// - Returns: The documents stored in keychain under the serviceName
 	func loadDocuments(id: String?, status: DocumentStatus) throws -> [Document]? {
-		guard var dicts1 = try loadDocumentsData(id: id, docStatus: status) else { return nil }
-		let dicts2 = dicts1.filter(Self.isPrivateKeyRow)
-		dicts1 = dicts1.filter(Self.isDocumentDataRow)
-		let documents = dicts1.compactMap { d1 in Self.makeDocument(dict1: d1, dict2: dicts2.first(where: { d2 in d1[kSecAttrAccount as String] as! String == d2[kSecAttrAccount as String] as! String}), status: status) }
+		guard var dicts = try loadDocumentsData(id: id, docStatus: status) else { return nil }
+		let documents = dicts.compactMap { d in Self.makeDocument(dict: d, status: status) }
 		return documents
 	}
 	
@@ -69,9 +68,6 @@ public actor KeyChainStorageService: DataStorageService {
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
 		var res = result as! [[String: Any]]
-		if dataToLoadType == .doc {
-			if let dicts2 = try loadDocumentsData(id: id, docStatus: docStatus, dataToLoadType: .key) { res.append(contentsOf: dicts2) }
-		}
 		return res
 	}
 	
@@ -80,10 +76,7 @@ public actor KeyChainStorageService: DataStorageService {
 	/// - Parameters:
 	///   - document: The document to save
 	public func saveDocument(_ document: Document, allowOverwrite: Bool = true) throws {
-		try saveDocumentData(document, dataToSaveType: .doc, dataType: document.docDataType.rawValue, allowOverwrite: allowOverwrite)
-		if document.docDataType != .signupResponseJson {
-			try saveDocumentData(document, dataToSaveType: .key, dataType: document.privateKeyType!.rawValue, allowOverwrite: allowOverwrite)
-		}
+		try saveDocumentData(document, dataType: document.docDataType.rawValue, allowOverwrite: allowOverwrite)
 	}
 	
 	/// Make a query for a an item in keychain
@@ -94,38 +87,37 @@ public actor KeyChainStorageService: DataStorageService {
 	func makeQuery(id: String?, bForSave: Bool, status: DocumentStatus, dataType: SavedKeyChainDataType) -> [String: Any] {
 		let comps = [serviceName, dataType.rawValue, status.rawValue ]
 		let queryValue = comps.joined(separator: ":")
-		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: queryValue] as [String: Any]
+		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: queryValue, kSecUseDataProtectionKeychain: true] as [String: Any]
 		if !bForSave {
-			query[kSecReturnData as String] = true
 			query[kSecReturnAttributes as String] = true
-			query[kSecMatchLimit as String] = kSecMatchLimitAll
 		}
-		if let id { query[kSecAttrAccount as String] = id}
+		if let id { query[kSecAttrAccount as String] = id } else { query[kSecMatchLimit as String] = kSecMatchLimitAll }
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
 		return query
 	}
 	
 	static func getIsNegativeValueToUse(_ dataToSaveType: SavedKeyChainDataType) -> Bool { switch dataToSaveType { case .key: true; default: false } }
 	
-	public func saveDocumentData(_ document: Document, dataToSaveType: SavedKeyChainDataType, dataType: String, allowOverwrite: Bool = true) throws {
+	public func saveDocumentData(_ document: Document, dataType: String, allowOverwrite: Bool = true) throws {
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
 		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType), displayName: \(document.displayName ?? "")")
 		guard dataType.count == 4 else { throw StorageError(description: "Invalid type") }
-		if dataToSaveType == .key && document.privateKey == nil { throw StorageError(description: "Private key not available") }
-		var query: [String: Any] = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: dataToSaveType)
-		query[kSecUseDataProtectionKeychain as String] = true
-		query[kSecValueData as String] = switch dataToSaveType { case .key: document.privateKey!; default: document.data }
-		// use this attribute to differentiate between document and key data
-		query[kSecAttrIsNegative as String] = Self.getIsNegativeValueToUse(dataToSaveType)
-		query[kSecAttrLabel as String] = document.docType
-		if let dn = document.displayName { query[kSecAttrDescription as String] = dn }
-		query[kSecAttrType as String] = dataType
+		var query: [String: Any] = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: .doc)
+		func setDictValues(d: inout [String: Any]) {
+			d[kSecValueData as String] = document.data
+			// use this attribute to differentiate between document and key data
+			d[kSecAttrIsNegative as String] = Self.getIsNegativeValueToUse(.doc)
+			d[kSecAttrLabel as String] = document.docType
+			if let dn = document.displayName { d[kSecAttrDescription as String] = dn }
+			if let san = document.secureAreaName { d[kSecAttrComment as String] = san }
+			d[kSecAttrType as String] = dataType
+		}
+		setDictValues(d: &query)
 		var status = SecItemAdd(query as CFDictionary, nil)
 		if allowOverwrite && status == errSecDuplicateItem {
-			var updated: [String: Any] = [kSecValueData: query[kSecValueData as String] as! Data, kSecAttrIsNegative: Self.getIsNegativeValueToUse(dataToSaveType), kSecAttrLabel: document.docType, kSecAttrDescription: document.displayName ?? "", kSecAttrType: dataType] as [String: Any]
-			if let dn = document.displayName { updated[kSecAttrDescription as String] = dn }
-			query = makeQuery(id: document.id, bForSave: true, status: document.status, dataType: dataToSaveType)
+			var updated: [String: Any] = [:]
+			setDictValues(d: &updated)
 			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
 		}
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
@@ -135,6 +127,19 @@ public actor KeyChainStorageService: DataStorageService {
 		}
 	}
 	
+	public func readKeyInfo(id: String) throws -> [String : Data] {
+	[:]
+	}
+	
+	public func readKeyData(id: String) throws -> [String : Data] {
+	[:]
+	}
+	// save key public info
+	public func writeKeyInfo(id: String, dict: [String: Data]) throws {}
+	// save key sensitive info
+	public func writeKeyData(id: String, dict: [String: Data]) throws {}
+	// delete key info and data
+	public func deleteKey(id: String) throws {}
 	/// Delete the secret from keychain
 	/// Note: the value passed in will be zeroed out after the secret is deleted
 	/// - Parameters:
@@ -169,14 +174,9 @@ public actor KeyChainStorageService: DataStorageService {
 	/// Make a document from a keychain item
 	/// - Parameter dict: keychain item returned as dictionary
 	/// - Returns: the document
-	static func makeDocument(dict1: [String: Any], dict2: [String: Any]?, status: DocumentStatus) -> Document {
-		var data = dict1[kSecValueData as String] as! Data
+	static func makeDocument(dict: [String: Any], status: DocumentStatus) -> Document {
+		var data = dict[kSecValueData as String] as! Data
 		defer { let c = data.count; data.withUnsafeMutableBytes { memset_s($0.baseAddress, c, 0, c); return } }
-		var keyType: PrivateKeyType? = nil; var privateKeyData: Data? = nil
-		if let dict2 {
-			keyType = PrivateKeyType(rawValue: dict2[kSecAttrType as String] as? String ?? PrivateKeyType.secureEnclaveP256.rawValue)!
-			privateKeyData = (dict2[kSecValueData as String] as! Data)
-		}
-		return Document(id: dict1[kSecAttrAccount as String] as! String, docType: dict1[kSecAttrLabel as String] as? String ?? "", docDataType: DocDataType(rawValue: dict1[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, privateKeyType: keyType, privateKey: privateKeyData, createdAt: (dict1[kSecAttrCreationDate as String] as! Date), modifiedAt: dict1[kSecAttrModificationDate as String] as? Date, displayName: dict1[kSecAttrDescription as String] as? String, status: status)
+		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as? String ?? "", docDataType: DocDataType(rawValue: dict[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, secureAreaName: dict[kSecAttrComment as String] as? String, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, displayName: dict[kSecAttrDescription as String] as? String, status: status)
 	}
 }

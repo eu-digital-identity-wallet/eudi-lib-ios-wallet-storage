@@ -36,14 +36,6 @@ public enum DocDataType: String, Sendable {
 	case signupResponseJson = "srjs"
 }
 
-/// Format of private key
-/// ``x963EncodedP256``: ANSI x9.63 representation (default)
-/// ``secureEnclaveP256``: data representation for the secure enclave
-public enum PrivateKeyType: String, Sendable {
-	case x963EncodedP256 = "p256"
-	case secureEnclaveP256 = "sep2"
-}
-
 
 /// document status
 public enum DocumentStatus: String, CaseIterable, Sendable {
