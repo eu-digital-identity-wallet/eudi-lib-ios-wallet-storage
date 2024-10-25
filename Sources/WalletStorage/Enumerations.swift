@@ -19,7 +19,7 @@ import Foundation
 /// type of data to save in storage
 /// ``doc``: Document data
 /// ``key``: Private-key
-public enum SavedKeyChainDataType: String, Sendable {
+public enum SavedKeyChainDataType: String, Sendable, CaseIterable {
 	case doc = "sdoc"
 	case key = "skey"
 	case keyInfo = "skei"
@@ -33,7 +33,7 @@ public enum SavedKeyChainDataType: String, Sendable {
 public enum DocDataType: String, Sendable {
 	case cbor = "cbor"
 	case sjwt = "sjwt"
-	case signupResponseJson = "srjs"
+	// case signupResponseJson = "srjs"
 }
 
 

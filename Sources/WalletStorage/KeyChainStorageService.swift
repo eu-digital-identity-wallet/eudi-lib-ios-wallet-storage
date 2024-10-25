@@ -19,7 +19,7 @@ import MdocDataModel18013
 /// Implements key-chain storage
 /// Documents are saved as a pair of generic password items (document data and private key)
 /// For implementation details see [Apple documentation](https://developer.apple.com/documentation/security/ksecclassgenericpassword)
-public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
+public actor KeyChainStorageService: DataStorageService  {
 
 	public init(serviceName: String, accessGroup: String? = nil) {
 		self.serviceName = serviceName
@@ -49,13 +49,13 @@ public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 	/// - Parameters:
 	/// - Returns: The documents stored in keychain under the serviceName
 	func loadDocuments(id: String?, status: DocumentStatus) throws -> [Document]? {
-		guard let dicts = try loadDocumentsData(id: id, status: status, dataToLoadType: .doc) else { return nil }
+		guard let dicts = try Self.loadDocumentsData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: status, dataToLoadType: .doc) else { return nil }
 		let documents = dicts.compactMap { d in Self.makeDocument(dict: d, status: status) }
 		return documents
 	}
 	
-	func loadDocumentsData(id: String?, status: DocumentStatus, dataToLoadType: SavedKeyChainDataType) throws -> [[String: Any]]? {
-		let query = makeQuery(id: id, bForSave: false, status: status, dataType: dataToLoadType)
+	nonisolated static func loadDocumentsData(serviceName: String, accessGroup: String?, id: String?, status: DocumentStatus, dataToLoadType: SavedKeyChainDataType) throws -> [[String: Any]]? {
+		let query = Self.makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: status, dataType: dataToLoadType)
 		var result: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &result)
 		if status == errSecItemNotFound { return nil }
@@ -84,7 +84,7 @@ public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
 		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType), displayName: \(document.displayName ?? "")")
-		try saveDocumentData(id: document.id, status: document.status, dataType: .doc, setDictValues: setDictValues, allowOverwrite: allowOverwrite)
+		try Self.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: document.id, status: document.status, dataType: .doc, setDictValues: setDictValues, allowOverwrite: allowOverwrite)
 	}
 	
 	/// Make a query for a an item in keychain
@@ -92,7 +92,7 @@ public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 	///   - id: id
 	///   - bAll: request all matching items
 	/// - Returns: The dictionary query
-	func makeQuery(id: String?, bForSave: Bool, status: DocumentStatus, dataType: SavedKeyChainDataType) -> [String: Any] {
+	nonisolated static func makeQuery(serviceName: String, accessGroup: String?, id: String?, bForSave: Bool, status: DocumentStatus, dataType: SavedKeyChainDataType) -> [String: Any] {
 		let comps = [serviceName, dataType.rawValue, status.rawValue ]
 		let queryValue = comps.joined(separator: ":")
 		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: queryValue, kSecUseDataProtectionKeychain: true] as [String: Any]
@@ -104,8 +104,8 @@ public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 		return query
 	}
 	
-	public func saveDocumentData(id: String, status: DocumentStatus, dataType: SavedKeyChainDataType, setDictValues: (inout [String: Any]) -> Void, allowOverwrite: Bool) throws {
-		var query: [String: Any] = makeQuery(id: id, bForSave: true, status: status, dataType: dataType)
+	public nonisolated static func saveDocumentData(serviceName: String, accessGroup: String?, id: String, status: DocumentStatus, dataType: SavedKeyChainDataType, setDictValues: (inout [String: Any]) -> Void, allowOverwrite: Bool) throws {
+		var query: [String: Any] = Self.makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: true, status: status, dataType: dataType)
 		setDictValues(&query)
 		var status = SecItemAdd(query as CFDictionary, nil)
 		if allowOverwrite && status == errSecDuplicateItem {
@@ -120,51 +120,19 @@ public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 		}
 	}
 	
-	func keyChainDataValue(key: String, value: Any) -> (String, Data)? {
-		if let v = value as? String { (key, v.data(using: .utf8)!) } else if let v = value as? Data { (key, v) } else { nil }
-	}
-	
-	public func readKeyInfo(id: String) throws -> [String : Data] {
-		guard let dicts = try loadDocumentsData(id: id, status: .issued, dataToLoadType: .keyInfo), !dicts.isEmpty else { return [:] }
-		return Dictionary(uniqueKeysWithValues: dicts.first!.compactMap(keyChainDataValue))
-	}
-	
-	public func readKeyData(id: String) throws -> [String : Data] {
-		guard let dicts = try loadDocumentsData(id: id, status: .issued, dataToLoadType: .key), !dicts.isEmpty else { return [:] }
-		return Dictionary(uniqueKeysWithValues: dicts.first!.compactMap(keyChainDataValue))
-	}
-	
-	// save key public info
-	public func writeKeyInfo(id: String, dict: [String: Data]) throws {
-		func setDictValues(_ d: inout [String: Any]) { for (k, v) in dict { d[k] = if k == kSecValueData as String { v } else { String(data: v, encoding: .utf8) ?? "" } } }
-		try saveDocumentData(id: id, status: .issued, dataType: .keyInfo, setDictValues: setDictValues, allowOverwrite: true)
-	}
-	
-	// save key sensitive info
-	public func writeKeyData(id: String, dict: [String: Data]) throws {
-		func setDictValues(_ d: inout [String: Any]) { for (k, v) in dict { d[k] = if k == kSecValueData as String { v } else { String(data: v, encoding: .utf8) ?? "" } } } 
-		try saveDocumentData(id: id, status: .issued, dataType: .key, setDictValues: setDictValues, allowOverwrite: true)
-	}
-	
-	// delete key info and data
-	public func deleteKey(id: String) throws {
-		logger.info("Delete key with id \(id)")
-		try? deleteDocumentData(id: id, docStatus: .issued, dataType: .keyInfo)
-		try deleteDocumentData(id: id, docStatus: .issued, dataType: .key)
-	}
-	
 	/// Delete the secret from keychain
 	/// Note: the value passed in will be zeroed out after the secret is deleted
 	/// - Parameters:
 	///   - id: The Id of the secret
 	public func deleteDocument(id: String, status: DocumentStatus) throws {
 		logger.info("Delete document with status: \(status), id: \(id)")
-		try deleteDocumentData(id: id, docStatus: status, dataType: .doc)
-		try deleteKey(id: id)
+		for dts in SavedKeyChainDataType.allCases {
+			try? Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: dts)
+		}
 	}
 	
-	public func deleteDocumentData(id: String?, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
-		let query: [String: Any] = makeQuery(id: id, bForSave: true, status: docStatus, dataType: dataType)
+	public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String?, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
+		let query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: true, status: docStatus, dataType: dataType)
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		if status == errSecItemNotFound, id == nil {
@@ -181,9 +149,9 @@ public actor KeyChainStorageService: DataStorageService, SecureKeyStorage {
 	///   - id: The Id of the secret
 	public func deleteDocuments(status: DocumentStatus) throws {
 		logger.info("Delete documents with status: \(status)")
-		try deleteDocumentData(id: nil, docStatus: status, dataType: .doc)
-		try deleteDocumentData(id: nil, docStatus: status, dataType: .keyInfo)
-		try deleteDocumentData(id: nil, docStatus: status, dataType: .key)
+		for dts in SavedKeyChainDataType.allCases {
+			try? Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: nil, docStatus: status, dataType: dts)
+		}
 	}
 	
 	/// Make a document from a keychain item

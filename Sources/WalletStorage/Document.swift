@@ -46,12 +46,8 @@ public struct Document: DocumentProtocol, Sendable {
 	/// get CBOR data and private key from document
 	public func getCborData() -> (iss: (String, IssuerSigned), dpk: (String, CoseKeyPrivate))? {
 		switch docDataType {
-		case .signupResponseJson:
-			guard let sr = data.decodeJSON(type: SignUpResponse.self), let dr = sr.deviceResponse, let iss = dr.documents?.first?.issuerSigned, let dpk = sr.devicePrivateKey else { return nil }
-			let randomId = UUID().uuidString
-			return ((randomId, iss), (randomId, dpk))
 		case .cbor:
-			guard let iss = IssuerSigned(data: [UInt8](data)), let dpk = try? IssueRequest(id: id, secureAreaName: secureAreaName).coseKeyPrivate else { return nil }
+			guard let iss = IssuerSigned(data: [UInt8](data)), let dpk = try? CoseKeyPrivate(key: nil, privateKeyId: id, secureArea: SecureAreaRegistry.shared.get(name: secureAreaName)) else { return nil }
 			return ((id, iss), (id, dpk))
 		case .sjwt:
 			fatalError("Format \(docDataType) not implemented")
