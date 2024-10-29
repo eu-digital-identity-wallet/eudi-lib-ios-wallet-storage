@@ -64,8 +64,9 @@ public actor KeyChainStorageService: DataStorageService  {
 			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
 			throw StorageError(description: statusMessage ?? "", code: Int(status))
 		}
-		let res = result as! [[String: Any]]
-		return res
+		if let res = result as? [[String: Any]] { return res }
+		else if let res1 = result as? [String: Any] { return [res1] }
+		else { return nil }
 	}
 	
 	/// Save the secret to keychain
@@ -98,6 +99,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		var query: [String: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: queryValue, kSecUseDataProtectionKeychain: true] as [String: Any]
 		if !bForSave {
 			query[kSecReturnAttributes as String] = true
+			query[kSecReturnData as String] = true
 		}
 		if let id { query[kSecAttrAccount as String] = id } else { query[kSecMatchLimit as String] = kSecMatchLimitAll }
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
@@ -132,7 +134,8 @@ public actor KeyChainStorageService: DataStorageService  {
 	}
 	
 	public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String?, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
-		let query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: true, status: docStatus, dataType: dataType)
+		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
+		query.removeValue(forKey: kSecMatchLimit as String) 
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
 		if status == errSecItemNotFound, id == nil {
@@ -157,8 +160,8 @@ public actor KeyChainStorageService: DataStorageService  {
 	/// Make a document from a keychain item
 	/// - Parameter dict: keychain item returned as dictionary
 	/// - Returns: the document
-	static func makeDocument(dict: [String: Any], status: DocumentStatus) -> Document {
-		var data = dict[kSecValueData as String] as! Data
+	static func makeDocument(dict: [String: Any], status: DocumentStatus) -> Document? {
+		guard var data = dict[kSecValueData as String] as? Data else { return nil }
 		defer { let c = data.count; data.withUnsafeMutableBytes { memset_s($0.baseAddress, c, 0, c); return } }
 		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as? String ?? "", docDataType: DocDataType(rawValue: dict[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, secureAreaName: dict[kSecAttrComment as String] as? String, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, displayName: dict[kSecAttrDescription as String] as? String, status: status)
 	}
