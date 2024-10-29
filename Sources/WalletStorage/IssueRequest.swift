@@ -40,7 +40,7 @@ public struct IssueRequest: Sendable {
 	public func saveToStorage() throws {
 		// save key data to storage with id
 		logger.info("Saving Issue request with id: \(id)")
-		try createKey()
+		_ = try createKey()
 	}
 
 	
