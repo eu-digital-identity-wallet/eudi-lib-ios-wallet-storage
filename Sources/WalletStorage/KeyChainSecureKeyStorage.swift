@@ -41,7 +41,7 @@ public class KeyChainSecureKeyStorage: SecureKeyStorage, @unchecked Sendable {
 	public func writeKeyData(id: String, dict: [String: Data], keyOptions: KeyOptions?) throws {
 		func setDictValues(_ d: inout [String: Any]) {
 			for (k, v) in dict { d[k] = if k == kSecValueData as String { v } else { String(data: v, encoding: .utf8) ?? "" } }
-			d[kSecAttrAccessControl as String] = SecAccessControlCreateWithFlags(nil, keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenUnlockedThisDeviceOnly, keyOptions?.accessControl?.flags ?? [], nil)! as Any
+			d[kSecAttrAccessControl as String] = SecAccessControlCreateWithFlags(nil, keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenUnlocked, keyOptions?.accessControl?.flags ?? [], nil)! as Any
 		}
 		try KeyChainStorageService.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: .issued, dataType: .key, setDictValues: setDictValues, allowOverwrite: true)
 	}
