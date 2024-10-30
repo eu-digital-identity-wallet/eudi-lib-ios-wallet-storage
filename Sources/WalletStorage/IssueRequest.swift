@@ -37,13 +37,6 @@ public struct IssueRequest: Sendable {
 		return res.0
 	}
 	
-	public func saveToStorage() throws {
-		// save key data to storage with id
-		logger.info("Saving Issue request with id: \(id)")
-		_ = try createKey()
-	}
-
-	
 }
 
 
