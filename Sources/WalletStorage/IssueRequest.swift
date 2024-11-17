@@ -22,6 +22,7 @@ import MdocDataModel18013
 public struct IssueRequest: Sendable {
 	public var id: String
 	public var keyOptions: KeyOptions?
+	public var secureArea: SecureArea
 	/// Initialize issue request with id
 	///
 	/// - Parameters:
@@ -29,12 +30,12 @@ public struct IssueRequest: Sendable {
 	public init(id: String = UUID().uuidString, keyOptions: KeyOptions? = nil) throws {
 		self.id = id
 		self.keyOptions = keyOptions
+		secureArea = SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
 	}
 	
-	public func createKey() throws -> SecKey {
-		let sa = SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
-		let res = try sa.createKey(id: id, keyOptions: keyOptions)
-		return res.0
+	public func createKey() throws -> CoseKey {
+		let res = try secureArea.createKey(id: id, keyOptions: keyOptions)
+		return res
 	}
 	
 }
