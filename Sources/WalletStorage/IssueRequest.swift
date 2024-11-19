@@ -23,6 +23,7 @@ public struct IssueRequest: Sendable {
 	public var id: String
 	public var keyOptions: KeyOptions?
 	public var secureArea: SecureArea
+	public var secureAreaName: String { type(of: secureArea).name }
 	/// Initialize issue request with id
 	///
 	/// - Parameters:
