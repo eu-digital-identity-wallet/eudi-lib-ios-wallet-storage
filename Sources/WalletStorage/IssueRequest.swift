@@ -34,8 +34,8 @@ public struct IssueRequest: Sendable {
 		secureArea = SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
 	}
 	
-	public func createKey() throws -> CoseKey {
-		let res = try secureArea.createKey(id: id, keyOptions: keyOptions)
+	public func createKey() async throws -> CoseKey {
+		let res = try await secureArea.createKey(id: id, keyOptions: keyOptions)
 		return res
 	}
 	
