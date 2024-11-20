@@ -8,7 +8,7 @@
 import Foundation
 import MdocDataModel18013
 
-public class KeyChainSecureKeyStorage: SecureKeyStorage, @unchecked Sendable {
+public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 	public let serviceName: String
 	public let accessGroup: String?
 	

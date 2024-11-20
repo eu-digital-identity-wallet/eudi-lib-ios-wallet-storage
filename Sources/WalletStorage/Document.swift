@@ -47,7 +47,7 @@ public struct Document: DocumentProtocol, Sendable {
 	public func getCborData() -> (iss: (String, IssuerSigned), dpk: (String, CoseKeyPrivate))? {
 		switch docDataType {
 		case .cbor:
-			guard let iss = IssuerSigned(data: [UInt8](data)), let dpk = try? CoseKeyPrivate(privateKeyId: id, secureArea: SecureAreaRegistry.shared.get(name: secureAreaName)) else { return nil }
+			guard let iss = IssuerSigned(data: [UInt8](data)), case let dpk = CoseKeyPrivate(privateKeyId: id, secureArea: SecureAreaRegistry.shared.get(name: secureAreaName)) else { return nil }
 			return ((id, iss), (id, dpk))
 		case .sjwt:
 			fatalError("Format \(docDataType) not implemented")
