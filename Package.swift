@@ -15,8 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.3"),
-        .package(url: "https://github.com/niscy-eudiw/eudi-lib-ios-iso18013-data-model.git", branch: "SecureArea")
-		//.package(url: "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model.git", exact: "0.3.3"),
+		.package(url: "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model.git", exact: "0.4.0"),
 		],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.

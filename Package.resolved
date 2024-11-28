@@ -1,13 +1,13 @@
 {
-  "originHash" : "08463f260f414eb3510676387224edbd265ad4bb40c170c1c45452fb30d79ec9",
+  "originHash" : "fcb82ddcec78f864b92635b39a134e6c2ebc5f4f04274dc94f535c265aaae092",
   "pins" : [
     {
       "identity" : "eudi-lib-ios-iso18013-data-model",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/niscy-eudiw/eudi-lib-ios-iso18013-data-model.git",
+      "location" : "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model.git",
       "state" : {
-        "branch" : "SecureArea",
-        "revision" : "cf7926fcdf85d1c7fc40a051dea112737b372a5a"
+        "revision" : "29f30a92427733db0c7b9cea9616607a1df24284",
+        "version" : "0.4.0"
       }
     },
     {
