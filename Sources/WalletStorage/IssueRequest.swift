@@ -21,87 +21,22 @@ import MdocDataModel18013
 /// Issue request structure
 public struct IssueRequest: Sendable {
 	public var id: String
-	public var docType: String?
-	public var keyData: Data
-	public var privateKeyType: PrivateKeyType
-	
+	public var keyOptions: KeyOptions?
+	public var secureArea: SecureArea
+	public var secureAreaName: String { type(of: secureArea).name }
 	/// Initialize issue request with id
 	///
 	/// - Parameters:
 	///   - id: a key identifier (uuid)
-	public init(id: String = UUID().uuidString, docType: String? = nil, privateKeyType: PrivateKeyType = .secureEnclaveP256, keyData: Data? = nil) throws {
+	public init(id: String = UUID().uuidString, keyOptions: KeyOptions? = nil) throws {
 		self.id = id
-		self.docType = docType
-		self.privateKeyType = privateKeyType
-		if let keyData {
-			self.keyData = keyData
-			// key-data already created, exit
-			return
-		}
-		switch privateKeyType {
-		case .derEncodedP256:
-			let p256 = P256.KeyAgreement.PrivateKey()
-			self.keyData = p256.derRepresentation
-		case .pemStringDataP256:
-			let p256 = P256.KeyAgreement.PrivateKey()
-			self.keyData = p256.pemRepresentation.data(using: .utf8)!
-		case .x963EncodedP256:
-			let p256 = P256.KeyAgreement.PrivateKey()
-			self.keyData = p256.x963Representation
-		case .secureEnclaveP256:
-			let secureEnclaveKey = try SecureEnclave.P256.KeyAgreement.PrivateKey() 
-			self.keyData = secureEnclaveKey.dataRepresentation
-		}
-		logger.info("Created private key of type \(privateKeyType)")
-		if let docType { logger.info(" and docType: \(docType)") }
+		self.keyOptions = keyOptions
+		secureArea = SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
 	}
 	
-	public func saveTo(storageService: any DataStorageService, status: DocumentStatus) async throws {
-		// save key data to storage with id
-		logger.info("Saving Issue request with id: \(id) and document status: \(status)")
-		let docKey = Document(id: id, docType: docType ?? "P256", docDataType: .cbor, data: Data(), privateKeyType: privateKeyType, privateKey: keyData, createdAt: Date(), displayName: nil, status: status)
-		try await storageService.saveDocument(docKey, allowOverwrite: true)
-	}
-	
-	public mutating func loadFrom(storageService: any DataStorageService, id: String, status: DocumentStatus) async throws {
-		guard let doc = try await storageService.loadDocument(id: id, status: status), let pk = doc.privateKey, let pkt = doc.privateKeyType else { return }
-		self.id = id
-		keyData = pk
-		privateKeyType = pkt
-	}
-	
-	public func toCoseKeyPrivate() throws -> CoseKeyPrivate {
-		switch privateKeyType {
-		case .derEncodedP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(derRepresentation: keyData)
-			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
-		case .x963EncodedP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(x963Representation: keyData)
-			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
-		case .pemStringDataP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!)
-			return CoseKeyPrivate(privateKeyx963Data: p256.x963Representation, crv: .p256)
-		case .secureEnclaveP256:
-			let se256 = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: keyData)
-			return CoseKeyPrivate(publicKeyx963Data: se256.publicKey.x963Representation, secureEnclaveKeyID: keyData)
-		}
-	}
-	
-	public func getPublicKeyPEM() throws -> String {
-		switch privateKeyType {
-		case .derEncodedP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(derRepresentation: keyData)
-			return p256.publicKey.pemRepresentation
-		case .pemStringDataP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(pemRepresentation: String(data: keyData, encoding: .utf8)!)
-			return p256.publicKey.pemRepresentation
-		case .x963EncodedP256:
-			let p256 = try P256.KeyAgreement.PrivateKey(x963Representation: keyData)
-			return p256.publicKey.pemRepresentation
-		case .secureEnclaveP256:
-			let se256 = try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: keyData)
-			return se256.publicKey.pemRepresentation
-		}
+	public func createKey() async throws -> CoseKey {
+		let res = try await secureArea.createKey(id: id, keyOptions: keyOptions)
+		return res
 	}
 	
 }
