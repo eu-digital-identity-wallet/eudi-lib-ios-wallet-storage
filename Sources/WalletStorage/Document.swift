@@ -18,8 +18,8 @@ import Foundation
 import MdocDataModel18013
 
 /// wallet document structure
-public struct Document: DocumentProtocol, Sendable {
-	public init(id: String = UUID().uuidString, docType: String, docDataType: DocDataType, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, displayName: String?, status: DocumentStatus) {
+public struct Document: Sendable {
+	public init(id: String = UUID().uuidString, docType: String?, docDataType: DocDataType, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataType = docDataType
@@ -27,18 +27,18 @@ public struct Document: DocumentProtocol, Sendable {
 		self.secureAreaName = secureAreaName
 		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
-		self.displayName = displayName
+		self.metadata = metadata
 		self.status = status
 	}
 	
 	public var id: String = UUID().uuidString
-	public let docType: String
+	public let docType: String?
 	public let data: Data
 	public let docDataType: DocDataType
 	public let secureAreaName: String?
 	public let createdAt: Date
 	public let modifiedAt: Date?
-	public let displayName: String?
+	public let metadata: Data?
 	public let status: DocumentStatus
 	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
