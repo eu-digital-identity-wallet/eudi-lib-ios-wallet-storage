@@ -80,7 +80,7 @@ public actor KeyChainStorageService: DataStorageService  {
 			d[kSecAttrLabel as String] = document.docType
 			if let md = document.metadata { d[kSecAttrDescription as String] = md.base64EncodedString() }  
 			if let san = document.secureAreaName { d[kSecAttrComment as String] = san }
-			d[kSecAttrType as String] = document.docDataType.rawValue
+			d[kSecAttrType as String] = document.docDataFormat.rawValue
 		}
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
@@ -165,6 +165,6 @@ public actor KeyChainStorageService: DataStorageService  {
 		defer { let c = data.count; data.withUnsafeMutableBytes { memset_s($0.baseAddress, c, 0, c); return } }
 		let descrBase64 =  dict[kSecAttrDescription as String] as? String
 		let md: Data? = if let descrBase64 { Data(base64Encoded: descrBase64) } else { nil }
-		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as? String, docDataType: DocDataType(rawValue: dict[kSecAttrType as String] as? String ?? DocDataType.cbor.rawValue) ?? DocDataType.cbor, data: data, secureAreaName: dict[kSecAttrComment as String] as? String, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, metadata: md, status: status)
+		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as? String, docDataFormat: DocDataFormat(rawValue: dict[kSecAttrType as String] as? String ?? DocDataFormat.cbor.rawValue) ?? DocDataFormat.cbor, data: data, secureAreaName: dict[kSecAttrComment as String] as? String, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, metadata: md, status: status)
 	}
 }

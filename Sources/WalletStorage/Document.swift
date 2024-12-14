@@ -19,10 +19,10 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document: Sendable {
-	public init(id: String = UUID().uuidString, docType: String?, docDataType: DocDataType, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, status: DocumentStatus) {
+	public init(id: String = UUID().uuidString, docType: String?, docDataFormat: DocDataFormat, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
-		self.docDataType = docDataType
+		self.docDataFormat = docDataFormat
 		self.data = data
 		self.secureAreaName = secureAreaName
 		self.createdAt = createdAt ?? Date()
@@ -34,7 +34,7 @@ public struct Document: Sendable {
 	public var id: String = UUID().uuidString
 	public let docType: String?
 	public let data: Data
-	public let docDataType: DocDataType
+	public let docDataFormat: DocDataFormat
 	public let secureAreaName: String?
 	public let createdAt: Date
 	public let modifiedAt: Date?
@@ -43,14 +43,9 @@ public struct Document: Sendable {
 	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
 	
-	/// get CBOR data and private key from document
-	public func getCborData() -> (iss: (String, IssuerSigned), dpk: (String, CoseKeyPrivate))? {
-		switch docDataType {
-		case .cbor:
-			guard let iss = IssuerSigned(data: [UInt8](data)), case let dpk = CoseKeyPrivate(privateKeyId: id, secureArea: SecureAreaRegistry.shared.get(name: secureAreaName)) else { return nil }
-			return ((id, iss), (id, dpk))
-		case .sjwt:
-			return nil
-		}
+	public func getDataForTransfer() -> (doc: (String, Data), fmt: (String, String), sa: (String, String))? {
+		guard let sa = secureAreaName else { return nil }
+		return ((id, data), (id, docDataFormat.rawValue), (id, sa))
 	}
+
 }
