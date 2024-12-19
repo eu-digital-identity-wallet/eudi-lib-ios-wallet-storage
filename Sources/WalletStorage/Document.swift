@@ -19,7 +19,7 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document: Sendable {
-	public init(id: String = UUID().uuidString, docType: String?, docDataFormat: DocDataFormat, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, status: DocumentStatus) {
+	public init(id: String = UUID().uuidString, docType: String?, docDataFormat: DocDataFormat, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataFormat = docDataFormat
@@ -28,6 +28,7 @@ public struct Document: Sendable {
 		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
 		self.metadata = metadata
+		self.displayName = displayName
 		self.status = status
 	}
 	
@@ -39,9 +40,12 @@ public struct Document: Sendable {
 	public let createdAt: Date
 	public let modifiedAt: Date?
 	public let metadata: Data?
+	public var displayName: String?	
 	public let status: DocumentStatus
 	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
+
+	
 	
 	public func getDataForTransfer() -> (doc: (String, Data), fmt: (String, String), sa: (String, String))? {
 		guard let sa = secureAreaName else { return nil }
