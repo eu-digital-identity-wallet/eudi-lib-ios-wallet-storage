@@ -16,26 +16,16 @@ limitations under the License.
 
 import Foundation
 
-/// type of data to save in storage
+/// Type of data to save in storage
 /// ``doc``: Document data
 /// ``key``: Private-key
+///
+/// Raw value must be a 4-length string due to keychain requirements
 public enum SavedKeyChainDataType: String, Sendable, CaseIterable {
 	case doc = "sdoc"
 	case key = "skey"
 	case keyInfo = "skei"
 }
-
-/// Format of document data
-/// ``cbor``: DeviceResponse cbor encoded
-/// ``sjwt``: sd-jwt ** not yet supported **
-/// ``signupResponseJson``: DeviceResponse and PrivateKey json serialized
-/// ``deferred``: Deferred issuance data
-public enum DocDataType: String, Sendable {
-	case cbor = "cbor"
-	case sjwt = "sjwt"
-	// case signupResponseJson = "srjs"
-}
-
 
 /// document status
 public enum DocumentStatus: String, CaseIterable, Sendable {
