@@ -44,9 +44,8 @@ public struct Document: Sendable {
 	public let status: DocumentStatus
 	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
-
 	
-	
+	// get pairs: (doc, fmt, sa)
 	public func getDataForTransfer() -> (doc: (String, Data), fmt: (String, String), sa: (String, String))? {
 		guard let sa = secureAreaName else { return nil }
 		return ((id, data), (id, docDataFormat.rawValue), (id, sa))
