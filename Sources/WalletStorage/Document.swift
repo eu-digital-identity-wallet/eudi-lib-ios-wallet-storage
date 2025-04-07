@@ -45,10 +45,10 @@ public struct Document: Sendable {
 	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
 	
-	// get pairs: (doc, fmt, sa)
-	public func getDataForTransfer() -> (doc: (String, Data), fmt: (String, String), sa: (String, String))? {
+	// get pairs: (doc, metadata, fmt, sa)
+	public func getDataForTransfer() -> (doc: (String, Data), metadata: (String, Data?), fmt: (String, String), sa: (String, String))? {
 		guard let sa = secureAreaName else { return nil }
-		return ((id, data), (id, docDataFormat.rawValue), (id, sa))
+		return ((id, data), (id, metadata), (id, docDataFormat.rawValue), (id, sa))
 	}
 
 }
