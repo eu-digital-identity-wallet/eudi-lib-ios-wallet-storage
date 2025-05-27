@@ -18,9 +18,14 @@ import Foundation
 
 /// Data storage protocol
 public protocol DataStorageService: Actor {
+	/// load a document with the specified id. If a batch of documents has been saved, the least used instance is loaded
 	func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
+	/// load the placeholder documents for display
 	func loadDocuments(status: DocumentStatus) async throws -> [Document]?
-	func saveDocument(_ document: Document, allowOverwrite: Bool) async throws
+	// save a document and optionally a batch of documents with different corresponding private keys
+	func saveDocument(_ document: Document, batch: [Document]?, allowOverwrite: Bool) async throws
+	// delete a document and the batch with the specified id and status
 	func deleteDocument(id: String, status: DocumentStatus) async throws
+	// delete all documents with the specified status
 	func deleteDocuments(status: DocumentStatus) async throws
 }

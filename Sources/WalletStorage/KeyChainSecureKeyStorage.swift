@@ -24,12 +24,12 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 	}
 	
 	public func readKeyInfo(id: String) throws -> [String : Data] {
-		guard let dicts = try KeyChainStorageService.loadDocumentsData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: .issued, dataToLoadType: .keyInfo), !dicts.isEmpty else { return [:] }
+		guard let dicts = try KeyChainStorageService.loadData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: .issued, dataToLoadType: .keyInfo), !dicts.isEmpty else { return [:] }
 		return Dictionary(uniqueKeysWithValues: dicts.first!.compactMap(Self.keyChainDataValue))
 	}
 	
-	public func readKeyData(id: String) throws -> [String : Data] {
-		guard let dicts = try KeyChainStorageService.loadDocumentsData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: .issued, dataToLoadType: .key), !dicts.isEmpty else { return [:] }
+	public func readKeyData(id: String, index: Int) throws -> [String : Data] {
+		guard let dicts = try KeyChainStorageService.loadData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", status: .issued, dataToLoadType: .key), !dicts.isEmpty else { return [:] }
 		return Dictionary(uniqueKeysWithValues: dicts.first!.compactMap(Self.keyChainDataValue))
 	}
 	
@@ -39,27 +39,23 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 		try KeyChainStorageService.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: .issued, dataType: .keyInfo, setDictValues: setDictValues1, allowOverwrite: true)
 	}
 	
-	// save key sensitive info
-	public func writeKeyData(id: String, dict: [String: Data], keyOptions: KeyOptions?) throws {
-		self.dict = dict; self.keyOptions = keyOptions
-		try KeyChainStorageService.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: .issued, dataType: .key, setDictValues: setDictValues2, allowOverwrite: true)
-	}
-	
 	// save key batch info
-	public func writeKeyDataBatch(id: String, dicts: [[String : Data]], keyOptions: MdocDataModel18013.KeyOptions?) async throws {
+	public func writeKeyDataBatch(id: String, startIndex: Int, dicts: [[String : Data]], keyOptions: MdocDataModel18013.KeyOptions?) async throws {
 		guard dicts.count > 0 else { return }
 		self.keyOptions = keyOptions
-		for i in 0..<dicts.count {
+		for i in startIndex..<dicts.count+startIndex {
 			self.dict = dicts[i]
-			try KeyChainStorageService.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(i+1)", status: .issued, dataType: .key, setDictValues: setDictValues2, allowOverwrite: true)
+			try KeyChainStorageService.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(i)", status: .issued, dataType: .key, setDictValues: setDictValues2, allowOverwrite: true)
 		}
 	}
 	
 	// delete key info and data
-	public func deleteKey(id: String) throws {
-		logger.info("Delete key with id \(id)")
-		try? KeyChainStorageService.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: .issued, dataType: .keyInfo)
-		try KeyChainStorageService.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: .issued, dataType: .key)
+	public func deleteKeyBatch(id: String, batchSize: Int) throws {
+		logger.info("Delete key-batch with id \(id)")
+		for index in 0..<batchSize {
+			try? KeyChainStorageService.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .key)
+		}
+		try KeyChainStorageService.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: .issued, dataType: .keyInfo)
 	}
 	
 	// helper function to convert generic data dictionary to keychain expected dictionary
