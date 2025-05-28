@@ -22,10 +22,12 @@ public protocol DataStorageService: Actor {
 	func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
 	/// load the placeholder documents for display
 	func loadDocuments(status: DocumentStatus) async throws -> [Document]?
-	// save a document and optionally a batch of documents with different corresponding private keys
+	/// save a document and optionally a batch of documents with different corresponding private keys
 	func saveDocument(_ document: Document, batch: [Document]?, allowOverwrite: Bool) async throws
-	// delete a document and the batch with the specified id and status
+	/// delete a document and the batch of credentials and keys with the specified id and status
 	func deleteDocument(id: String, status: DocumentStatus) async throws
-	// delete all documents with the specified status
+	/// delete all documents (and keys) with the specified status
 	func deleteDocuments(status: DocumentStatus) async throws
+	/// delete document credential at a specified index
+	func deleteDocumentCredential(id: String, index: Int) async throws
 }

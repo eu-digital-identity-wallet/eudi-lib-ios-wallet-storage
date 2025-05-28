@@ -50,11 +50,14 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 	}
 	
 	// delete key info and data
-	public func deleteKeyBatch(id: String, batchSize: Int) throws {
+	public func deleteKeyBatch(id: String, startIndex: Int, batchSize: Int) throws {
 		logger.info("Delete key-batch with id \(id)")
-		for index in 0..<batchSize {
+		for index in startIndex..<batchSize+startIndex {
 			try? KeyChainStorageService.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .key)
 		}
+	}
+	
+	public func deleteKeyInfo(id: String) throws {
 		try KeyChainStorageService.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: .issued, dataType: .keyInfo)
 	}
 	

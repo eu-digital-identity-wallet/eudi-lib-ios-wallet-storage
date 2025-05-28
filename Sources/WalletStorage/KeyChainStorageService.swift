@@ -159,13 +159,18 @@ public actor KeyChainStorageService: DataStorageService  {
 	}
 			
 	func deleteDocumentHelper(id: String, dki: DocKeyInfo?, status: DocumentStatus) async throws {
-		try? Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
+		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
 		guard let dki else { logger.info("Could not find key info for id: \(id)"); return }
 		for index in 0..<dki.batchSize {
 			try? Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
 		}
 		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
-		try await secureArea.deleteKeyBatch(id: id, batchSize: dki.batchSize)
+		try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+		try await secureArea.deleteKeyInfo(id: id)
+	}
+	
+	public func deleteDocumentCredential(id: String, index: Int) async throws {
+		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .doc)
 	}
 	
 	public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
