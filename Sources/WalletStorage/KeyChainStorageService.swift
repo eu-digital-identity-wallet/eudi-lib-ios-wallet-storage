@@ -38,14 +38,19 @@ public actor KeyChainStorageService: DataStorageService  {
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
 	public func loadDocument(id: String, status: DocumentStatus) async throws -> Document? {
+		return try await loadDocumentHelper(id: id, status: status)
+	}
+	
+	public func loadDocumentHelper(id: String, status: DocumentStatus, needIndexToUse: Bool = true) async throws -> Document? {
 		logger.info("Load document with status: \(status), id: \(id)")
 		// get placeholder document to find index in batch
 		guard let doc0 = try loadDocuments(id: id, index: nil, status: status)?.first else { return nil }
+		if !needIndexToUse { return doc0 }
 		guard let dki = DocKeyInfo(from: doc0.docKeyInfo) else { return nil }
 		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		guard keyBatchInfo.batchSize > 1 else { return keyBatchInfo.credentialPolicy == .oneTimeUse && keyBatchInfo.usedCounts[0] > 0 ? nil : doc0 }
-		guard let indexToUse = keyBatchInfo.findIndexToUse() else { throw StorageError(description: "Cannot find key index to use for id " + id) }
+		guard let indexToUse = keyBatchInfo.findIndexToUse() else { return nil }
 		var doc = try loadDocuments(id: id, index: indexToUse, status: status)?.first
 		doc?.keyIndex = indexToUse
 		doc?.docKeyInfo = doc0.docKeyInfo
@@ -153,7 +158,7 @@ public actor KeyChainStorageService: DataStorageService  {
 	///   - id: The Id of the secret
 	public func deleteDocument(id: String, status: DocumentStatus) async throws {
 		logger.info("Delete document with status: \(status), id: \(id)")
-		let doc = try await loadDocument(id: id, status: status)
+		let doc = try await loadDocumentHelper(id: id, status: status, needIndexToUse: false)
 		let dki = DocKeyInfo(from: doc?.docKeyInfo)
 		try await deleteDocumentHelper(id: id, dki: dki, status: status)
 	}
