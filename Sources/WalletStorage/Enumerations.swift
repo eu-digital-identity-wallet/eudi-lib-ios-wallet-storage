@@ -22,7 +22,10 @@ import Foundation
 ///
 /// Raw value must be a 4-length string due to keychain requirements
 public enum SavedKeyChainDataType: String, Sendable, CaseIterable {
+	// doc to display
 	case doc = "sdoc"
+	// doc to present (random in batch)
+	case docPresent = "pdoc"
 	case key = "skey"
 	case keyInfo = "skei"
 }

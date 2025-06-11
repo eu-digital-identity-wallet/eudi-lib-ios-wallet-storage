@@ -19,12 +19,12 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document: Sendable {
-	public init(id: String = UUID().uuidString, docType: String?, docDataFormat: DocDataFormat, data: Data, secureAreaName: String?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, displayName: String?, status: DocumentStatus) {
+	public init(id: String = UUID().uuidString, docType: String?, docDataFormat: DocDataFormat, data: Data, docKeyInfo: Data?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataFormat = docDataFormat
 		self.data = data
-		self.secureAreaName = secureAreaName
+		self.docKeyInfo = docKeyInfo
 		self.createdAt = createdAt ?? Date()
 		self.modifiedAt = modifiedAt
 		self.metadata = metadata
@@ -36,7 +36,8 @@ public struct Document: Sendable {
 	public let docType: String?
 	public let data: Data
 	public let docDataFormat: DocDataFormat
-	public let secureAreaName: String?
+	public var docKeyInfo: Data?
+	public var keyIndex: Int = 0
 	public let createdAt: Date
 	public let modifiedAt: Date?
 	public let metadata: Data?
@@ -44,12 +45,10 @@ public struct Document: Sendable {
 	public let status: DocumentStatus
 	public var statusDescription: String? {	status.rawValue	}
 	public var isDeferred: Bool { status == .deferred }
-
 	
-	
-	public func getDataForTransfer() -> (doc: (String, Data), fmt: (String, String), sa: (String, String))? {
-		guard let sa = secureAreaName else { return nil }
-		return ((id, data), (id, docDataFormat.rawValue), (id, sa))
+	// get pairs: (doc, metadata, fmt, sa)
+	public func getDataForTransfer() -> (doc: (String, Data), metadata: (String, Data?), fmt: (String, String), docKeyInfo: (String, Data?))? {
+		return ((id, data), (id, metadata), (id, docDataFormat.rawValue), (id, docKeyInfo))
 	}
 
 }
