@@ -166,8 +166,9 @@ public actor KeyChainStorageService: DataStorageService  {
 	func deleteDocumentHelper(id: String, dki: DocKeyInfo?, status: DocumentStatus) async throws {
 		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
 		guard let dki else { logger.info("Could not find key info for id: \(id)"); return }
+		guard status == .issued else { return }
 		for index in 0..<dki.batchSize {
-			try? Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
+			try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
 		}
 		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 		try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
