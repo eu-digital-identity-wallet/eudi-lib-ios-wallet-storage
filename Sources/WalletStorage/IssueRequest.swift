@@ -20,7 +20,8 @@ import MdocDataModel18013
 
 /// Issue request structure
 public struct IssueRequest: Sendable {
-	public var id: String
+	public let id: String
+	public let credentialOptions: CredentialOptions
 	public var keyOptions: KeyOptions?
 	public var secureArea: SecureArea
 	public var secureAreaName: String { type(of: secureArea).name }
@@ -28,19 +29,18 @@ public struct IssueRequest: Sendable {
 	///
 	/// - Parameters:
 	///   - id: a key identifier (uuid)
-	public init(id: String = UUID().uuidString, keyOptions: KeyOptions? = nil) throws {
+	public init(id: String = UUID().uuidString, credentialOptions: CredentialOptions, keyOptions: KeyOptions? = nil) throws {
 		self.id = id
+		self.credentialOptions = credentialOptions
 		self.keyOptions = keyOptions
 		secureArea = SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
 	}
-	
-	public var credentialPolicy: CredentialPolicy { keyOptions?.credentialPolicy ?? .rotateUse }
-	
+
 	public func createKeyBatch() async throws -> [CoseKey] {
-		let res = try await secureArea.createKeyBatch(id: id, keyOptions: keyOptions)
+		let res = try await secureArea.createKeyBatch(id: id, credentialOptions: credentialOptions, keyOptions: keyOptions)
 		return res
 	}
-	
+
 }
 
 
