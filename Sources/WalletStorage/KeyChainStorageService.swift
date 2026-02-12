@@ -171,9 +171,17 @@ public actor KeyChainStorageService: DataStorageService  {
         let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		guard status == .issued else { return }
 		for index in 0..<dki.batchSize {
-            try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc, index: index, keyBatchInfo: keyBatchInfo)
+            if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
+            try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
 		}
-		try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+        if keyBatchInfo.credentialPolicy == .rotateUse {
+            try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+        } else {
+            for index in 0..<dki.batchSize {
+                if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
+                try await secureArea.deleteKeyBatch(id: id, startIndex: index, batchSize: 1)
+            }
+        }
 		try await secureArea.deleteKeyInfo(id: id)
 	}
 	
@@ -181,9 +189,8 @@ public actor KeyChainStorageService: DataStorageService  {
         try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .doc)
 	}
 	
-    public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType, index: Int? = nil, keyBatchInfo: KeyBatchInfo? = nil) throws {
-        if dataType == .doc, let keyBatchInfo, let index, keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { return }
-		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
+    public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
+ 		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
 		query.removeValue(forKey: kSecMatchLimit as String) 
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
