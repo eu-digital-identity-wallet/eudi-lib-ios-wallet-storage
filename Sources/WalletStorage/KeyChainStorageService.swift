@@ -132,6 +132,7 @@ public actor KeyChainStorageService: DataStorageService  {
 			query[kSecReturnData as String] = true
 		}
 		if let id { query[kSecAttrAccount as String] = id } else { query[kSecMatchLimit as String] = kSecMatchLimitAll }
+        logger.info("Keychain queryValue: \(queryValue) id:\(id ?? "") for save:\(bForSave)")
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
 		return query
 	}
@@ -164,23 +165,32 @@ public actor KeyChainStorageService: DataStorageService  {
 	}
 			
 	func deleteDocumentHelper(id: String, dki: DocKeyInfo?, status: DocumentStatus) async throws {
-		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
+        try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
 		guard let dki else { logger.info("Could not find key info for id: \(id)"); return }
+        let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+        let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		guard status == .issued else { return }
 		for index in 0..<dki.batchSize {
-			try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
+            if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
+            try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
 		}
-		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
-		try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+        if keyBatchInfo.credentialPolicy == .rotateUse {
+            try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+        } else {
+            for index in 0..<dki.batchSize {
+                if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
+                try await secureArea.deleteKeyBatch(id: id, startIndex: index, batchSize: 1)
+            }
+        }
 		try await secureArea.deleteKeyInfo(id: id)
 	}
 	
 	public func deleteDocumentCredential(id: String, index: Int) async throws {
-		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .doc)
+        try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .doc)
 	}
 	
-	public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
-		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
+    public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
+ 		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
 		query.removeValue(forKey: kSecMatchLimit as String) 
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
