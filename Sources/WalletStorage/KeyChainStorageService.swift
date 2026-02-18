@@ -26,14 +26,10 @@ public actor KeyChainStorageService: DataStorageService  {
 		self.accessGroup = accessGroup
 	}
 	
-	public var serviceName: String
-	public var accessGroup: String?
+	public let serviceName: String
+	public let accessGroup: String?
 	var documentToSave: Document?
 	
-	public func initialize(_ serviceName: String, _ accessGroup: String?) {
-		self.serviceName = serviceName
-		self.accessGroup = accessGroup
-	}
 	/// Gets the secret document by id passed in parameter
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
@@ -170,14 +166,14 @@ public actor KeyChainStorageService: DataStorageService  {
         let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
         let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		guard status == .issued else { return }
-		for index in 0..<dki.batchSize {
+		for index in 0..<keyBatchInfo.usedCounts.count {
             if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
             try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
 		}
         if keyBatchInfo.credentialPolicy == .rotateUse {
             try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
         } else {
-            for index in 0..<dki.batchSize {
+            for index in 0..<keyBatchInfo.usedCounts.count {
                 if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
                 try await secureArea.deleteKeyBatch(id: id, startIndex: index, batchSize: 1)
             }
