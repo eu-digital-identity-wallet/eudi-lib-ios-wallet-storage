@@ -26,14 +26,10 @@ public actor KeyChainStorageService: DataStorageService  {
 		self.accessGroup = accessGroup
 	}
 	
-	public var serviceName: String
-	public var accessGroup: String?
+	public let serviceName: String
+	public let accessGroup: String?
 	var documentToSave: Document?
 	
-	public func initialize(_ serviceName: String, _ accessGroup: String?) {
-		self.serviceName = serviceName
-		self.accessGroup = accessGroup
-	}
 	/// Gets the secret document by id passed in parameter
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
