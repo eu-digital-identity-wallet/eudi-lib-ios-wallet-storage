@@ -93,7 +93,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		documentToSave = document
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
-		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType ?? "")")
+		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType)")
 		let id = document.id
 		try Self.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: document.status, dataType: .docPresent, setDictValues: setDictValues, allowOverwrite: allowOverwrite)
 		if let batch {
@@ -220,6 +220,6 @@ public actor KeyChainStorageService: DataStorageService  {
 		// load key usage from comment column
 		let commentBase64 =  dict[kSecAttrComment as String] as? String
 		let dki: Data? = if let commentBase64 { Data(base64Encoded: commentBase64) } else { nil }
-		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as? String, docDataFormat: DocDataFormat(rawValue: dict[kSecAttrType as String] as? String ?? DocDataFormat.cbor.rawValue) ?? DocDataFormat.cbor, data: data, docKeyInfo: dki, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, metadata: md, displayName: nil, status: status)
+		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as! String, docDataFormat: DocDataFormat(rawValue: dict[kSecAttrType as String] as? String ?? DocDataFormat.cbor.rawValue) ?? DocDataFormat.cbor, data: data, docKeyInfo: dki, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, metadata: md, displayName: nil, status: status)
 	}
 }
