@@ -40,7 +40,7 @@ public struct Document: Sendable, Identifiable {
 	public var keyIndex: Int = 0
 	public let createdAt: Date
 	public let modifiedAt: Date?
-	public let metadata: Data?
+	public var metadata: Data?
 	public var displayName: String?	
 	public let status: DocumentStatus
 	public var statusDescription: String? {	status.rawValue	}
