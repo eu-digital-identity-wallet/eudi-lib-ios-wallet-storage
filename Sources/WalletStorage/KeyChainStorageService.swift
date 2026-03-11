@@ -50,6 +50,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		var doc = try loadDocuments(id: id, index: indexToUse, status: status)?.first
 		doc?.keyIndex = indexToUse
 		doc?.docKeyInfo = doc0.docKeyInfo
+        doc?.metadata = doc0.metadata
 		return doc
 	}
 	
