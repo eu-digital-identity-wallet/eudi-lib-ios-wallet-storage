@@ -15,11 +15,15 @@ limitations under the License.
 */
 
 import Foundation
+import MdocDataModel18013
 
 /// Data storage protocol
 public protocol DataStorageService: Actor {
 	/// load a document with the specified id. If a batch of documents has been saved, the least used instance is loaded
-	func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
+	/// if no credential document is left, it returns nil
+    func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
+	/// load document metadata from an issued document
+    func loadDocumentMetadata(id: String) async throws -> DocMetadata?
 	/// load the placeholder documents for display
 	func loadDocuments(status: DocumentStatus) async throws -> [Document]?
 	/// save a document and optionally a batch of documents with different corresponding private keys

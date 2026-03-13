@@ -36,6 +36,13 @@ public actor KeyChainStorageService: DataStorageService  {
 	public func loadDocument(id: String, status: DocumentStatus) async throws -> Document? {
 		return try await loadDocumentHelper(id: id, status: status)
 	}
+    
+    public func loadDocumentMetadata(id: String) async throws -> MdocDataModel18013.DocMetadata? {
+        let doc0 = try await loadDocumentHelper(id: id, status: .issued, needIndexToUse: false)
+        guard let doc0 else { return nil }
+        let docMetadata = DocMetadata(from: doc0.metadata)
+        return docMetadata
+    }
 	
 	public func loadDocumentHelper(id: String, status: DocumentStatus, needIndexToUse: Bool = true) async throws -> Document? {
 		logger.info("Load document with status: \(status), id: \(id)")
