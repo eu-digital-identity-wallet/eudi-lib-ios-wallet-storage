@@ -53,6 +53,13 @@ public actor InMemoryDataStorageService: DataStorageService {
 		return mutableDoc
 	}
 	
+	/// Load document metadata from an issued document
+	public func loadDocumentMetadata(id: String) async throws -> DocMetadata? {
+		let key = makeKey(id: id, status: .issued)
+		guard let doc = documents[key]?.first else { return nil }
+		return DocMetadata(from: doc.metadata)
+	}
+	
 	/// Load placeholder documents for display
 	public func loadDocuments(status: DocumentStatus) async throws -> [WalletStorage.Document]? {
 		let filteredDocs = documents.filter { key, _ in
