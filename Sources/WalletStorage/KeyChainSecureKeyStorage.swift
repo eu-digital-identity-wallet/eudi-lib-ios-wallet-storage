@@ -65,13 +65,14 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 	func setDictValues1(_ d: inout [String: Any]) {
 		guard let dict else { return }
 		for (k, v) in dict { d[k] = if k == kSecValueData as String { v } else { String(data: v, encoding: .utf8) ?? "" } }
+		d[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 	}
 	
 	// helper function to convert generic data dictionary to keychain expected dictionary, create access control value if needed
 	func setDictValues2(_ d: inout [String: Any]) {
 		guard let dict else { return }
 		for (k, v) in dict { d[k] = if k == kSecValueData as String { v } else { String(data: v, encoding: .utf8) ?? "" } }
-		d[kSecAttrAccessControl as String] = SecAccessControlCreateWithFlags(nil, keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenUnlocked, keyOptions?.accessControl?.flags ?? [], nil)! as Any
+		d[kSecAttrAccessControl as String] = SecAccessControlCreateWithFlags(nil, keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenUnlockedThisDeviceOnly, keyOptions?.accessControl?.flags ?? [], nil)! as Any
 	}
 
 }
