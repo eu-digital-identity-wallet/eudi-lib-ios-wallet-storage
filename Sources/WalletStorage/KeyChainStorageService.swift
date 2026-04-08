@@ -120,6 +120,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		if let md = documentToSave.metadata { d[kSecAttrDescription as String] = md.base64EncodedString() }
 		if let dki = documentToSave.docKeyInfo { d[kSecAttrComment as String] = dki.base64EncodedString() }
 		d[kSecAttrType as String] = documentToSave.docDataFormat.rawValue
+		d[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 	}
 	
 	/// Make a query for a an item in keychain
