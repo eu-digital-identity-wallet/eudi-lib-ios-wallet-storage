@@ -18,8 +18,8 @@ import Foundation
 import MdocDataModel18013
 
 /// wallet document structure
-public struct Document: Sendable {
-	public init(id: String = UUID().uuidString, docType: String?, docDataFormat: DocDataFormat, data: Data, docKeyInfo: Data?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, displayName: String?, status: DocumentStatus) {
+public struct Document: Sendable, Identifiable {
+	public init(id: String = UUID().uuidString, docType: String, docDataFormat: DocDataFormat, data: Data, docKeyInfo: Data?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, displayName: String?, status: DocumentStatus) {
 		self.id = id
 		self.docType = docType
 		self.docDataFormat = docDataFormat
@@ -33,14 +33,14 @@ public struct Document: Sendable {
 	}
 	
 	public var id: String = UUID().uuidString
-	public let docType: String?
+	public let docType: String
 	public let data: Data
 	public let docDataFormat: DocDataFormat
 	public var docKeyInfo: Data?
 	public var keyIndex: Int = 0
 	public let createdAt: Date
 	public let modifiedAt: Date?
-	public let metadata: Data?
+	public var metadata: Data?
 	public var displayName: String?	
 	public let status: DocumentStatus
 	public var statusDescription: String? {	status.rawValue	}

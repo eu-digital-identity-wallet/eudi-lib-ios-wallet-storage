@@ -14,10 +14,10 @@
  limitations under the License.
  */
 import Foundation
-public struct StorageError: LocalizedError {
+public struct StorageError: LocalizedError, Sendable {
 	
-	var description: String
-	var code: Int
+	let description: String
+	let code: Int
 	
 	init(description: String, code: Int = 0) {
 		self.description = description

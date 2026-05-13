@@ -26,20 +26,23 @@ public actor KeyChainStorageService: DataStorageService  {
 		self.accessGroup = accessGroup
 	}
 	
-	public var serviceName: String
-	public var accessGroup: String?
+	public let serviceName: String
+	public let accessGroup: String?
 	var documentToSave: Document?
 	
-	public func initialize(_ serviceName: String, _ accessGroup: String?) {
-		self.serviceName = serviceName
-		self.accessGroup = accessGroup
-	}
 	/// Gets the secret document by id passed in parameter
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
 	public func loadDocument(id: String, status: DocumentStatus) async throws -> Document? {
 		return try await loadDocumentHelper(id: id, status: status)
 	}
+    
+    public func loadDocumentMetadata(id: String) async throws -> MdocDataModel18013.DocMetadata? {
+        let doc0 = try await loadDocumentHelper(id: id, status: .issued, needIndexToUse: false)
+        guard let doc0 else { return nil }
+        let docMetadata = DocMetadata(from: doc0.metadata)
+        return docMetadata
+    }
 	
 	public func loadDocumentHelper(id: String, status: DocumentStatus, needIndexToUse: Bool = true) async throws -> Document? {
 		logger.info("Load document with status: \(status), id: \(id)")
@@ -54,6 +57,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		var doc = try loadDocuments(id: id, index: indexToUse, status: status)?.first
 		doc?.keyIndex = indexToUse
 		doc?.docKeyInfo = doc0.docKeyInfo
+        doc?.metadata = doc0.metadata
 		return doc
 	}
 	
@@ -97,7 +101,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		documentToSave = document
 		// kSecAttrAccount is used to store the secret Id  (we save the document ID)
 		// kSecAttrService is a key whose value is a string indicating the item's service.
-		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType ?? "")")
+		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType)")
 		let id = document.id
 		try Self.saveDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, status: document.status, dataType: .docPresent, setDictValues: setDictValues, allowOverwrite: allowOverwrite)
 		if let batch {
@@ -116,6 +120,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		if let md = documentToSave.metadata { d[kSecAttrDescription as String] = md.base64EncodedString() }
 		if let dki = documentToSave.docKeyInfo { d[kSecAttrComment as String] = dki.base64EncodedString() }
 		d[kSecAttrType as String] = documentToSave.docDataFormat.rawValue
+		d[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 	}
 	
 	/// Make a query for a an item in keychain
@@ -132,6 +137,7 @@ public actor KeyChainStorageService: DataStorageService  {
 			query[kSecReturnData as String] = true
 		}
 		if let id { query[kSecAttrAccount as String] = id } else { query[kSecMatchLimit as String] = kSecMatchLimitAll }
+        logger.info("Keychain queryValue: \(queryValue) id:\(id ?? "") for save:\(bForSave)")
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
 		return query
 	}
@@ -164,22 +170,32 @@ public actor KeyChainStorageService: DataStorageService  {
 	}
 			
 	func deleteDocumentHelper(id: String, dki: DocKeyInfo?, status: DocumentStatus) async throws {
-		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
+        try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: id, docStatus: status, dataType: .docPresent)
 		guard let dki else { logger.info("Could not find key info for id: \(id)"); return }
-		for index in 0..<dki.batchSize {
-			try? Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
+        let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+        let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
+		guard status == .issued else { return }
+		for index in 0..<keyBatchInfo.usedCounts.count {
+            if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
+            try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: status, dataType: .doc)
 		}
-		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
-		try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+        if keyBatchInfo.credentialPolicy == .rotateUse {
+            try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
+        } else {
+            for index in 0..<keyBatchInfo.usedCounts.count {
+                if keyBatchInfo.credentialPolicy == .oneTimeUse,  keyBatchInfo.usedCounts[index] > 0 { continue }
+                try await secureArea.deleteKeyBatch(id: id, startIndex: index, batchSize: 1)
+            }
+        }
 		try await secureArea.deleteKeyInfo(id: id)
 	}
 	
 	public func deleteDocumentCredential(id: String, index: Int) async throws {
-		try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .doc)
+        try Self.deleteDocumentData(serviceName: serviceName, accessGroup: accessGroup, id: "\(id)_\(index)", docStatus: .issued, dataType: .doc)
 	}
 	
-	public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
-		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
+    public nonisolated static func deleteDocumentData(serviceName: String, accessGroup: String?, id: String, docStatus: DocumentStatus, dataType: SavedKeyChainDataType) throws {
+ 		var query: [String: Any] = makeQuery(serviceName: serviceName, accessGroup: accessGroup, id: id, bForSave: false, status: docStatus, dataType: dataType)
 		query.removeValue(forKey: kSecMatchLimit as String) 
 		let status = SecItemDelete(query as CFDictionary)
 		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
@@ -213,6 +229,6 @@ public actor KeyChainStorageService: DataStorageService  {
 		// load key usage from comment column
 		let commentBase64 =  dict[kSecAttrComment as String] as? String
 		let dki: Data? = if let commentBase64 { Data(base64Encoded: commentBase64) } else { nil }
-		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as? String, docDataFormat: DocDataFormat(rawValue: dict[kSecAttrType as String] as? String ?? DocDataFormat.cbor.rawValue) ?? DocDataFormat.cbor, data: data, docKeyInfo: dki, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, metadata: md, displayName: nil, status: status)
+		return Document(id: dict[kSecAttrAccount as String] as! String, docType: dict[kSecAttrLabel as String] as! String, docDataFormat: DocDataFormat(rawValue: dict[kSecAttrType as String] as? String ?? DocDataFormat.cbor.rawValue) ?? DocDataFormat.cbor, data: data, docKeyInfo: dki, createdAt: (dict[kSecAttrCreationDate as String] as! Date), modifiedAt: dict[kSecAttrModificationDate as String] as? Date, metadata: md, displayName: nil, status: status)
 	}
 }
