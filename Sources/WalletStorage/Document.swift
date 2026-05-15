@@ -19,7 +19,18 @@ import MdocDataModel18013
 
 /// wallet document structure
 public struct Document: Sendable, Identifiable {
-	public init(id: String = UUID().uuidString, docType: String, docDataFormat: DocDataFormat, data: Data, docKeyInfo: Data?, createdAt: Date?, modifiedAt: Date? = nil, metadata: Data?, displayName: String?, status: DocumentStatus) {
+	public init(
+		id: String = UUID().uuidString,
+		docType: String,
+		docDataFormat: DocDataFormat,
+		data: Data,
+		docKeyInfo: Data?,
+		createdAt: Date?,
+		modifiedAt: Date? = nil,
+		metadata: Data?,
+		displayName: String?,
+		status: DocumentStatus
+	) {
 		self.id = id
 		self.docType = docType
 		self.docDataFormat = docDataFormat
@@ -47,8 +58,17 @@ public struct Document: Sendable, Identifiable {
 	public var isDeferred: Bool { status == .deferred }
 	
 	// get pairs: (doc, metadata, fmt, sa)
-	public func getDataForTransfer() -> (doc: (String, Data), metadata: (String, Data?), fmt: (String, String), docKeyInfo: (String, Data?))? {
-		return ((id, data), (id, metadata), (id, docDataFormat.rawValue), (id, docKeyInfo))
+	public func getDataForTransfer() -> (
+		doc: (String, Data),
+		metadata: (String, Data?),
+		fmt: (String, String),
+		docKeyInfo: (String, Data?)
+	)? {
+		let documentDataPair: (String, Data) = (id, data)
+		let metadataPair: (String, Data?) = (id, metadata)
+		let dataFormatPair: (String, String) = (id, docDataFormat.rawValue)
+		let keyInfoPair: (String, Data?) = (id, docKeyInfo)
+		return (documentDataPair, metadataPair, dataFormatPair, keyInfoPair)
 	}
 
 }
