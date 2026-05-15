@@ -15,7 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.3"),
-		.package(url: "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model.git", from: "0.11.0"),
+		.package(url: "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model.git", from: "0.20.0"),
 		],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -24,7 +24,7 @@ let package = Package(
             name: "WalletStorage", 
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
-								.product(name: "MdocDataModel18013", package: "eudi-lib-ios-iso18013-data-model"),
+				.product(name: "MdocDataModel18013", package: "eudi-lib-ios-iso18013-data-model"),
             ]),
         .testTarget(
             name: "WalletStorageTests",
