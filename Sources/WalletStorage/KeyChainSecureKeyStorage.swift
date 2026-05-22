@@ -150,7 +150,7 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 		}
 		let accessProtection =
 			keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-		let accessControlFlags = keyOptions?.accessControl?.flags ?? []
+		let accessControlFlags = keyOptions?.accessControl?.flags ?? [.userPresence]
 		let accessControl = SecAccessControlCreateWithFlags(nil, accessProtection, accessControlFlags, nil)!
 		d[kSecAttrAccessControl as String] = accessControl as Any
 	}
