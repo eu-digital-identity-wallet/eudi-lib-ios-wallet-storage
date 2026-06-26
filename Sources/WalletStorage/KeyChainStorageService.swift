@@ -31,7 +31,13 @@ public actor KeyChainStorageService: DataStorageService  {
 	public let accessGroup: String?
 	var documentToSave: Document?
 	
-	/// Gets the secret document by id passed in parameter
+	/// Gets the document credential by id passed in parameter
+	/// For one-time credentials, after a successful non-Zero-Knowledge-Proof presentation,
+	/// delete the used credential with `deleteDocumentCredential(id:index:)` using
+	/// the returned document `keyIndex` value.
+	/// For rotate-use credentials, after a successful non-Zero-Knowledge-Proof presentation,
+	/// increment the usage counter for the returned document `keyIndex`
+	/// (for example by calling `secureArea.updateKeyBatchInfo(id:keyIndex:)`).
 	/// - Parameter id: Document identifier
 	/// - Returns: The document if exists
 	public func loadDocument(id: String, status: DocumentStatus) async throws -> Document? {

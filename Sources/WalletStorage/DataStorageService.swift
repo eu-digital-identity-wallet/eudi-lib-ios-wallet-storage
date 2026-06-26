@@ -19,8 +19,14 @@ import MdocDataModel18013
 
 /// Data storage protocol
 public protocol DataStorageService: Actor {
-	/// load a document with the specified id.
-	/// If a batch of documents has been saved, the least used instance is loaded.
+	/// load a document credential with the specified id.
+	/// If a batch of document credentials has been saved, the least used instance is loaded.
+	/// For one-time credentials, after a successful non-Zero-Knowledge-Proof presentation,
+	/// the caller should delete the used credential by calling `deleteDocumentCredential(id:index:)`
+	/// with the returned document `keyIndex` value.
+	/// For rotate-use credentials, after a successful non-Zero-Knowledge-Proof presentation,
+	/// the caller should increment the usage counter for the returned document `keyIndex`
+	/// (for example by calling `secureArea.updateKeyBatchInfo(id:keyIndex:)`).
 	/// if no credential document is left, it returns nil
     func loadDocument(id: String, status: DocumentStatus) async throws -> Document?
 	/// load document metadata from an issued document
