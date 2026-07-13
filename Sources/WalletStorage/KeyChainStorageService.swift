@@ -217,7 +217,6 @@ public actor KeyChainStorageService: DataStorageService  {
 		} else {
 			query[kSecMatchLimit as String] = kSecMatchLimitAll
 		}
-        logger.info("Keychain queryValue: \(queryValue) id:\(id ?? "") for save:\(bForSave)")
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
 		return query
 	}
