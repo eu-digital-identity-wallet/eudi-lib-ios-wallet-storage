@@ -133,7 +133,7 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 			}
 			d[attributeName] = keychainValue
 		}
-		d[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+		d[kSecAttrAccessible as String] = kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
 	}
 	
 	// helper function to convert generic data dictionary to keychain expected dictionary.
@@ -149,7 +149,7 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 			d[attributeName] = keychainValue
 		}
 		let accessProtection =
-			keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+			keyOptions?.accessProtection?.constant ?? kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
 		let accessControlFlags = keyOptions?.accessControl?.flags ?? [.userPresence]
 		let accessControl = SecAccessControlCreateWithFlags(nil, accessProtection, accessControlFlags, nil)!
 		d[kSecAttrAccessControl as String] = accessControl as Any
