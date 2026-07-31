@@ -29,7 +29,11 @@ public struct IssueRequest: Sendable {
 	///
 	/// - Parameters:
 	///   - id: a key identifier (uuid)
-	public init(id: String = UUID().uuidString, credentialOptions: CredentialOptions, keyOptions: KeyOptions? = nil) throws {
+	public init(
+		id: String = UUID().uuidString,
+		credentialOptions: CredentialOptions,
+		keyOptions: KeyOptions? = nil
+	) throws {
 		self.id = id
 		self.credentialOptions = credentialOptions
 		self.keyOptions = keyOptions
@@ -37,8 +41,12 @@ public struct IssueRequest: Sendable {
 	}
 
 	public func createKeyBatch() async throws -> [CoseKey] {
-		let res = try await secureArea.createKeyBatch(id: id, credentialOptions: credentialOptions, keyOptions: keyOptions)
-		return res
+		let createdKeyBatch = try await secureArea.createKeyBatch(
+			id: id,
+			credentialOptions: credentialOptions,
+			keyOptions: keyOptions
+		)
+		return createdKeyBatch
 	}
 
 }

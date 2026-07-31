@@ -54,8 +54,8 @@ public actor InMemoryDataStorageService: DataStorageService {
 	}
 	
 	/// Load document metadata from an issued document
-	public func loadDocumentMetadata(id: String) async throws -> DocMetadata? {
-		let key = makeKey(id: id, status: .issued)
+	public func loadDocumentMetadata(id: String, status: DocumentStatus) async throws -> DocMetadata? {
+		let key = makeKey(id: id, status: status)
 		guard let doc = documents[key]?.first else { return nil }
 		return DocMetadata(from: doc.metadata)
 	}
