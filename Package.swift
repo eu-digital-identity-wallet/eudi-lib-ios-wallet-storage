@@ -25,6 +25,10 @@ let package = Package(
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
 				.product(name: "MdocDataModel18013", package: "eudi-lib-ios-iso18013-data-model"),
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("InferIsolatedConformances"),
+                .enableUpcomingFeature("NonisolatedNonsendingByDefault")
             ]),
         .testTarget(
             name: "WalletStorageTests",
