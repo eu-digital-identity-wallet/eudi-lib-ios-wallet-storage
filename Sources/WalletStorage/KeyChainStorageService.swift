@@ -126,10 +126,9 @@ public actor KeyChainStorageService: DataStorageService  {
 		var result: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &result)
 		if status == errSecItemNotFound { return nil }
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		
 		guard status == errSecSuccess else {
-			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
-			throw StorageError(description: statusMessage ?? "", code: Int(status))
+			throw Self.storageError(for: status)
 		}
 		if let resultDictionaries = result as? [[String: Any]] { return resultDictionaries }
 		else if let resultDictionary = result as? [String: Any] { return [resultDictionary] }
@@ -221,6 +220,12 @@ public actor KeyChainStorageService: DataStorageService  {
 		return query
 	}
 	
+	nonisolated static func storageError(for status: OSStatus) -> StorageError {
+		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
+		return StorageError(description: statusMessage ?? "", code: Int(status))
+	}
+	
 	public nonisolated static func saveDocumentData(
 		serviceName: String,
 		accessGroup: String?,
@@ -245,10 +250,9 @@ public actor KeyChainStorageService: DataStorageService  {
 			setDictValues(&updated)
 			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
 		}
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		
 		guard status == errSecSuccess else {
-			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
-			throw StorageError(description: statusMessage ?? "", code: Int(status))
+			throw Self.storageError(for: status)
 		}
 	}
 	
@@ -328,10 +332,9 @@ public actor KeyChainStorageService: DataStorageService  {
 		)
 		query.removeValue(forKey: kSecMatchLimit as String) 
 		let status = SecItemDelete(query as CFDictionary)
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
-		if status != errSecSuccess {
-			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
-			throw StorageError(description: statusMessage ?? "", code: Int(status))
+		
+		guard status == errSecSuccess else {
+			throw Self.storageError(for: status)
 		}
 	}
 	
