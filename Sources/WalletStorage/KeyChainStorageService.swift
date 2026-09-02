@@ -15,6 +15,7 @@
  */
 
 import Foundation
+@preconcurrency import LocalAuthentication
 import MdocDataModel18013
 /// Implements key-chain storage
 /// Documents are saved as a pair of generic password items (document data and private key)
@@ -113,7 +114,8 @@ public actor KeyChainStorageService: DataStorageService  {
 		accessGroup: String?,
 		id: String?,
 		status: DocumentStatus,
-		dataToLoadType: SavedKeyChainDataType
+		dataToLoadType: SavedKeyChainDataType,
+		authenticationContext: ThreadSafeAuthContext? = nil
 	) throws -> [[String: Any]]? {
 		let query = Self.makeQuery(
 			serviceName: serviceName,
@@ -121,7 +123,8 @@ public actor KeyChainStorageService: DataStorageService  {
 			id: id,
 			bForSave: false,
 			status: status,
-			dataType: dataToLoadType
+			dataType: dataToLoadType,
+			authenticationContext: authenticationContext
 		)
 		var result: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -198,7 +201,8 @@ public actor KeyChainStorageService: DataStorageService  {
 		id: String?,
 		bForSave: Bool,
 		status: DocumentStatus,
-		dataType: SavedKeyChainDataType
+		dataType: SavedKeyChainDataType,
+		authenticationContext: ThreadSafeAuthContext? = nil
 	) -> [String: Any] {
 		let comps = [serviceName, dataType.rawValue, status.rawValue ]
 		let queryValue = comps.joined(separator: ":")
@@ -215,6 +219,11 @@ public actor KeyChainStorageService: DataStorageService  {
 			query[kSecAttrAccount as String] = id
 		} else {
 			query[kSecMatchLimit as String] = kSecMatchLimitAll
+		}
+		if let authenticationContext {
+			_ = authenticationContext.withLAContext {
+				query[kSecUseAuthenticationContext as String] = $0
+			}
 		}
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
 		return query
