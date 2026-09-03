@@ -35,6 +35,11 @@ public actor InMemorySecureKeyStorage: SecureKeyStorage {
 		let key = makeKeyDataKey(id: id, index: index)
 		return keyDataStorage[key] ?? [:]
 	}
+
+	public func readKeyData(id: String, index: Int, authenticationContext: ThreadSafeAuthContext) async throws -> [String: Data] {
+		let key = makeKeyDataKey(id: id, index: index)
+		return keyDataStorage[key] ?? [:]
+	}
 	
 	/// Save key public info
 	public func writeKeyInfo(id: String, dict: [String: Data]) async throws {
