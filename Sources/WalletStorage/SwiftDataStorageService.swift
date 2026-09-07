@@ -1,12 +1,12 @@
 /*
  Copyright (c) 2026 European Commission
- 
+
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
- 
+
  http://www.apache.org/licenses/LICENSE-2.0
- 
+
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +32,7 @@ public final class SwiftDataStoredDocument {
 	var createdAt: Date
 	var modifiedAt: Date?
 	var metadata: Data?
-	
+
 	init(
 		storageKey: String,
 		documentId: String,
@@ -54,7 +54,7 @@ public final class SwiftDataStoredDocument {
 		self.modifiedAt = document.modifiedAt
 		self.metadata = document.metadata
 	}
-	
+
 	func update(with document: Document) {
 		docType = document.docType
 		docDataFormat = document.docDataFormat.rawValue
@@ -63,7 +63,7 @@ public final class SwiftDataStoredDocument {
 		modifiedAt = Date()
 		metadata = document.metadata
 	}
-	
+
 	func makeDocument() -> Document {
 		Document(
 			id: documentId,
@@ -83,12 +83,24 @@ public final class SwiftDataStoredDocument {
 /// Implements document storage using Apple's SwiftData framework.
 public actor SwiftDataStorageService: DataStorageService {
 	private let container: ModelContainer
-	
+
 	public init(modelContainer: ModelContainer) {
 		self.container = modelContainer
 	}
-	
-	public init(isStoredInMemoryOnly: Bool = false) throws {
+
+	public init(appGroup: String) throws {
+		let schema = Schema([SwiftDataStoredDocument.self])
+		let configuration = ModelConfiguration(
+			schema: schema,
+			groupContainer: .identifier(appGroup)
+		)
+		self.container = try ModelContainer(
+			for: schema,
+			configurations: [configuration]
+		)
+	}
+
+	public init(isStoredInMemoryOnly: Bool) throws {
 		let schema = Schema([SwiftDataStoredDocument.self])
 		let configuration = ModelConfiguration(
 			schema: schema,
@@ -99,12 +111,21 @@ public actor SwiftDataStorageService: DataStorageService {
 			configurations: [configuration]
 		)
 	}
-	
+
+	public init(usePrimaryGroupContainer: Bool) throws {
+		let schema = Schema([SwiftDataStoredDocument.self])
+		let configuration: ModelConfiguration
+		configuration = ModelConfiguration(schema: schema, groupContainer: usePrimaryGroupContainer ? .automatic : .none)
+		self.container = try ModelContainer(for: schema, configurations: [configuration])
+	}
+
 	public func loadDocument(id: String, status: DocumentStatus) async throws -> Document? {
 		try await loadDocumentHelper(id: id, status: status)
 	}
-	
-	public func loadDocumentMetadata(id: String, status: DocumentStatus) async throws -> DocMetadata? {
+
+	public func loadDocumentMetadata(id: String, status: DocumentStatus) async throws
+		-> DocMetadata?
+	{
 		let placeholderDocument = try await loadDocumentHelper(
 			id: id,
 			status: status,
@@ -113,7 +134,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		guard let placeholderDocument else { return nil }
 		return DocMetadata(from: placeholderDocument.metadata)
 	}
-	
+
 	public func loadDocuments(status: DocumentStatus) async throws -> [Document]? {
 		logger.info("Load documents with status: \(status)")
 		let context = ModelContext(container)
@@ -125,9 +146,13 @@ public actor SwiftDataStorageService: DataStorageService {
 		)
 		return documents?.isEmpty == false ? documents : nil
 	}
-	
-	public func saveDocument(_ document: Document, batch: [Document]?, allowOverwrite: Bool) async throws {
-		logger.info("Save document for status: \(document.status), id: \(document.id), docType: \(document.docType)")
+
+	public func saveDocument(_ document: Document, batch: [Document]?, allowOverwrite: Bool)
+		async throws
+	{
+		logger.info(
+			"Save document for status: \(document.status), id: \(document.id), docType: \(document.docType)"
+		)
 		let context = ModelContext(container)
 		try upsert(
 			document,
@@ -153,7 +178,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		}
 		try context.save()
 	}
-	
+
 	public func deleteDocument(id: String, status: DocumentStatus) async throws {
 		logger.info("Delete document with status: \(status), id: \(id)")
 		let context = ModelContext(container)
@@ -171,16 +196,17 @@ public actor SwiftDataStorageService: DataStorageService {
 			context: context
 		)
 	}
-	
+
 	public func deleteDocuments(status: DocumentStatus) async throws {
 		logger.info("Delete documents with status: \(status)")
 		let context = ModelContext(container)
-		let docs = try loadDocuments(
-			id: nil,
-			index: nil,
-			status: status,
-			context: context
-		) ?? []
+		let docs =
+			try loadDocuments(
+				id: nil,
+				index: nil,
+				status: status,
+				context: context
+			) ?? []
 		for doc in docs {
 			let docKeyInfo = DocKeyInfo(from: doc.docKeyInfo)
 			try await deleteDocumentHelper(
@@ -191,7 +217,7 @@ public actor SwiftDataStorageService: DataStorageService {
 			)
 		}
 	}
-	
+
 	public func deleteDocumentCredential(id: String, index: Int) async throws {
 		let context = ModelContext(container)
 		try deleteDocumentData(
@@ -202,7 +228,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		)
 		try context.save()
 	}
-	
+
 	func loadDocumentHelper(
 		id: String,
 		status: DocumentStatus,
@@ -219,11 +245,16 @@ public actor SwiftDataStorageService: DataStorageService {
 		)
 		guard let placeholderDocument = placeholderDocuments?.first else { return nil }
 		if !needIndexToUse { return placeholderDocument }
-		guard let docKeyInfo = DocKeyInfo(from: placeholderDocument.docKeyInfo) else { return placeholderDocument }
+		guard let docKeyInfo = DocKeyInfo(from: placeholderDocument.docKeyInfo) else {
+			return placeholderDocument
+		}
 		let secureArea = SecureAreaRegistry.shared.get(name: docKeyInfo.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
-		let isUsedOneTimeCredential = keyBatchInfo.credentialPolicy == .oneTimeUse && keyBatchInfo.usedCounts[0] > 0
-		guard keyBatchInfo.batchSize > 1 else { return isUsedOneTimeCredential ? nil : placeholderDocument }
+		let isUsedOneTimeCredential =
+			keyBatchInfo.credentialPolicy == .oneTimeUse && keyBatchInfo.usedCounts[0] > 0
+		guard keyBatchInfo.batchSize > 1 else {
+			return isUsedOneTimeCredential ? nil : placeholderDocument
+		}
 		guard let indexToUse = keyBatchInfo.findIndexToUse() else { return nil }
 		var doc = try loadDocuments(
 			id: id,
@@ -237,21 +268,23 @@ public actor SwiftDataStorageService: DataStorageService {
 		doc?.displayName = placeholderDocument.displayName
 		return doc
 	}
-	
+
 	func loadDocuments(
 		id: String?,
 		index: Int?,
 		status: DocumentStatus,
 		context: ModelContext
 	) throws -> [Document]? {
-		let credentialId: String? = if let id, let index {
-			"\(id)_\(index)"
-		} else if index == nil {
-			id
-		} else {
-			nil
-		}
-		let dataType: SavedKeyChainDataType = if id != nil && index != nil { .doc } else { .docPresent }
+		let credentialId: String? =
+			if let id, let index {
+				"\(id)_\(index)"
+			} else if index == nil {
+				id
+			} else {
+				nil
+			}
+		let dataType: SavedKeyChainDataType =
+			if id != nil && index != nil { .doc } else { .docPresent }
 		let records = try loadRecords(
 			credentialId: credentialId,
 			status: status,
@@ -260,7 +293,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		)
 		return records.map { $0.makeDocument() }
 	}
-	
+
 	func deleteDocumentHelper(
 		id: String,
 		dki: DocKeyInfo?,
@@ -299,7 +332,8 @@ public actor SwiftDataStorageService: DataStorageService {
 			try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
 		} else {
 			for index in 0..<keyBatchInfo.usedCounts.count {
-				let shouldSkipUsedCredential = isOneTimeUsePolicy && keyBatchInfo.usedCounts[index] > 0
+				let shouldSkipUsedCredential =
+					isOneTimeUsePolicy && keyBatchInfo.usedCounts[index] > 0
 				if shouldSkipUsedCredential { continue }
 				try await secureArea.deleteKeyBatch(id: id, startIndex: index, batchSize: 1)
 			}
@@ -307,7 +341,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		try await secureArea.deleteKeyInfo(id: id)
 		try context.save()
 	}
-	
+
 	private func upsert(
 		_ document: Document,
 		documentId: String,
@@ -340,7 +374,7 @@ public actor SwiftDataStorageService: DataStorageService {
 			)
 		}
 	}
-	
+
 	private func deleteDocumentData(
 		id: String,
 		status: DocumentStatus,
@@ -357,7 +391,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		}
 		context.delete(record)
 	}
-	
+
 	private func loadRecords(
 		credentialId: String?,
 		status: DocumentStatus,
@@ -387,7 +421,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		}
 		return try context.fetch(descriptor)
 	}
-	
+
 	private func record(
 		storageKey: String,
 		context: ModelContext
@@ -398,7 +432,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		descriptor.fetchLimit = 1
 		return try context.fetch(descriptor).first
 	}
-	
+
 	private nonisolated static func storageKey(
 		credentialId: String,
 		status: DocumentStatus,
