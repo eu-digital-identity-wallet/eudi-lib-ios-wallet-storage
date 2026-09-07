@@ -112,17 +112,11 @@ public actor SwiftDataStorageService: DataStorageService {
 		)
 	}
 
-	public init(usePrimaryGroupContainer: Bool? = nil) throws {
+	public init(usePrimaryGroupContainer: Bool) throws {
 		let schema = Schema([SwiftDataStoredDocument.self])
 		let configuration: ModelConfiguration
-		configuration = ModelConfiguration(
-			schema: schema,
-			groupContainer: usePrimaryGroupContainer == true ? .automatic : .none
-		)
-		self.container = try ModelContainer(
-			for: schema,
-			configurations: [configuration]
-		)
+		configuration = ModelConfiguration(schema: schema, groupContainer: usePrimaryGroupContainer ? .automatic : .none)
+		self.container = try ModelContainer(for: schema, configurations: [configuration])
 	}
 
 	public func loadDocument(id: String, status: DocumentStatus) async throws -> Document? {
