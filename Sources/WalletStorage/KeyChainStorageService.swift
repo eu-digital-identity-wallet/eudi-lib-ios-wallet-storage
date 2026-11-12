@@ -244,7 +244,26 @@ public actor KeyChainStorageService: DataStorageService  {
 		setDictValues: (inout [String: Any]) -> Void,
 		allowOverwrite: Bool
 	) throws {
-		var query: [String: Any] = Self.makeQuery(
+		try saveDocumentData(
+			serviceName: serviceName, accessGroup: accessGroup, id: id,
+			status: status, dataType: dataType, setDictValues: setDictValues,
+			allowOverwrite: allowOverwrite,
+			add: { SecItemAdd($0, nil) }, update: { SecItemUpdate($0, $1) }
+		)
+	}
+
+	nonisolated static func saveDocumentData(
+		serviceName: String,
+		accessGroup: String?,
+		id: String,
+		status: DocumentStatus,
+		dataType: SavedKeyChainDataType,
+		setDictValues: (inout [String: Any]) -> Void,
+		allowOverwrite: Bool,
+		add: (CFDictionary) -> OSStatus,
+		update: (CFDictionary, CFDictionary) -> OSStatus
+	) throws {
+		let query: [String: Any] = Self.makeQuery(
 			serviceName: serviceName,
 			accessGroup: accessGroup,
 			id: id,
@@ -252,12 +271,14 @@ public actor KeyChainStorageService: DataStorageService  {
 			status: status,
 			dataType: dataType
 		)
-		setDictValues(&query)
-		var status = SecItemAdd(query as CFDictionary, nil)
+		var attributes = query
+		setDictValues(&attributes)
+		var status = add(attributes as CFDictionary)
 		if allowOverwrite && status == errSecDuplicateItem {
 			var updated: [String: Any] = [:]
 			setDictValues(&updated)
-			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
+			// Match the existing item by identity, not by the new attributes.
+			status = update(query as CFDictionary, updated as CFDictionary)
 		}
 		
 		guard status == errSecSuccess else {
