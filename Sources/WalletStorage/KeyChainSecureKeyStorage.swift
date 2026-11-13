@@ -6,6 +6,7 @@
 //
 
 import Foundation
+@preconcurrency import LocalAuthentication
 import MdocDataModel18013
 
 public actor KeyChainSecureKeyStorage: SecureKeyStorage {
@@ -43,15 +44,16 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 			uniqueKeysWithValues: keyInfoDictionaries.first!.compactMap(Self.keyChainDataValue)
 		)
 	}
-	
-	public func readKeyData(id: String, index: Int) throws -> [String : Data] {
+
+	public func readKeyData(id: String, index: Int, authenticationContext: ThreadSafeAuthContext) throws -> [String : Data] {
 		let keyDataIdentifier = "\(id)_\(index)"
 		let keyDataDictionaries = try KeyChainStorageService.loadData(
 			serviceName: serviceName,
 			accessGroup: accessGroup,
 			id: keyDataIdentifier,
 			status: .issued,
-			dataToLoadType: .key
+			dataToLoadType: .key,
+			authenticationContext: authenticationContext
 		)
 		guard let keyDataDictionaries, !keyDataDictionaries.isEmpty else { return [:] }
 		return Dictionary(
@@ -156,4 +158,3 @@ public actor KeyChainSecureKeyStorage: SecureKeyStorage {
 	}
 
 }
-

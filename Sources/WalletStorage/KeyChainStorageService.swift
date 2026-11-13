@@ -15,6 +15,7 @@
  */
 
 import Foundation
+@preconcurrency import LocalAuthentication
 import MdocDataModel18013
 /// Implements key-chain storage
 /// Documents are saved as a pair of generic password items (document data and private key)
@@ -113,7 +114,8 @@ public actor KeyChainStorageService: DataStorageService  {
 		accessGroup: String?,
 		id: String?,
 		status: DocumentStatus,
-		dataToLoadType: SavedKeyChainDataType
+		dataToLoadType: SavedKeyChainDataType,
+		authenticationContext: ThreadSafeAuthContext? = nil
 	) throws -> [[String: Any]]? {
 		let query = Self.makeQuery(
 			serviceName: serviceName,
@@ -121,15 +123,15 @@ public actor KeyChainStorageService: DataStorageService  {
 			id: id,
 			bForSave: false,
 			status: status,
-			dataType: dataToLoadType
+			dataType: dataToLoadType,
+			authenticationContext: authenticationContext
 		)
 		var result: CFTypeRef?
 		let status = SecItemCopyMatching(query as CFDictionary, &result)
 		if status == errSecItemNotFound { return nil }
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		
 		guard status == errSecSuccess else {
-			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
-			throw StorageError(description: statusMessage ?? "", code: Int(status))
+			throw Self.storageError(for: status)
 		}
 		if let resultDictionaries = result as? [[String: Any]] { return resultDictionaries }
 		else if let resultDictionary = result as? [String: Any] { return [resultDictionary] }
@@ -199,7 +201,8 @@ public actor KeyChainStorageService: DataStorageService  {
 		id: String?,
 		bForSave: Bool,
 		status: DocumentStatus,
-		dataType: SavedKeyChainDataType
+		dataType: SavedKeyChainDataType,
+		authenticationContext: ThreadSafeAuthContext? = nil
 	) -> [String: Any] {
 		let comps = [serviceName, dataType.rawValue, status.rawValue ]
 		let queryValue = comps.joined(separator: ":")
@@ -217,8 +220,19 @@ public actor KeyChainStorageService: DataStorageService  {
 		} else {
 			query[kSecMatchLimit as String] = kSecMatchLimitAll
 		}
+		if let authenticationContext {
+			_ = authenticationContext.withLAContext {
+				query[kSecUseAuthenticationContext as String] = $0
+			}
+		}
 		if let accessGroup, !accessGroup.isEmpty { query[kSecAttrAccessGroup as String] = accessGroup }
 		return query
+	}
+	
+	nonisolated static func storageError(for status: OSStatus) -> StorageError {
+		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
+		return StorageError(description: statusMessage ?? "", code: Int(status))
 	}
 	
 	public nonisolated static func saveDocumentData(
@@ -245,10 +259,9 @@ public actor KeyChainStorageService: DataStorageService  {
 			setDictValues(&updated)
 			status = SecItemUpdate(query as CFDictionary, updated as CFDictionary)
 		}
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
+		
 		guard status == errSecSuccess else {
-			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
-			throw StorageError(description: statusMessage ?? "", code: Int(status))
+			throw Self.storageError(for: status)
 		}
 	}
 	
@@ -328,10 +341,9 @@ public actor KeyChainStorageService: DataStorageService  {
 		)
 		query.removeValue(forKey: kSecMatchLimit as String) 
 		let status = SecItemDelete(query as CFDictionary)
-		let statusMessage = SecCopyErrorMessageString(status, nil) as? String
-		if status != errSecSuccess {
-			logger.error("Error code: \(Int(status)), description: \(statusMessage ?? "")")
-			throw StorageError(description: statusMessage ?? "", code: Int(status))
+		
+		guard status == errSecSuccess else {
+			throw Self.storageError(for: status)
 		}
 	}
 	
