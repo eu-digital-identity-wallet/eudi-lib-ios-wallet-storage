@@ -301,29 +301,35 @@ public actor KeyChainStorageService: DataStorageService  {
 	}
 			
 	func deleteDocumentHelper(id: String, dki: DocKeyInfo?, status: DocumentStatus) async throws {
-		try Self.deleteDocumentData(
-			serviceName: serviceName,
-			accessGroup: accessGroup,
-			id: id,
-			docStatus: status,
-			dataType: .docPresent
-		)
-		guard let dki else { logger.info("Could not find key info for id: \(id)"); return }
-		let secureArea = try SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+		try await deleteDocumentHelper(id: id, dki: dki, status: status) { id, dataType in
+			try Self.deleteDocumentData(
+				serviceName: self.serviceName, accessGroup: self.accessGroup,
+				id: id, docStatus: status, dataType: dataType
+			)
+		}
+	}
+
+	func deleteDocumentHelper(
+		id: String, dki: DocKeyInfo?, status: DocumentStatus,
+		resolveSecureArea: @Sendable (String?) throws -> any SecureArea = { try SecureAreaRegistry.shared.get(name: $0) },
+		deleteData: @Sendable (String, SavedKeyChainDataType) throws -> Void
+	) async throws {
+		guard let dki else {
+			try deleteData(id, .docPresent)
+			logger.info("Could not find key info for id: \(id)")
+			return
+		}
+		// Keep the placeholder available for a retry if secure-area metadata cannot be read.
+		let secureArea = try resolveSecureArea(dki.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
+		try deleteData(id, .docPresent)
 		let isOneTimeUsePolicy = keyBatchInfo.credentialPolicy == .oneTimeUse
 		guard status == .issued else { return }
 		for index in 0..<keyBatchInfo.usedCounts.count {
 			let shouldSkipUsedCredential = isOneTimeUsePolicy && keyBatchInfo.usedCounts[index] > 0
 			if shouldSkipUsedCredential { continue }
 			let credentialId = "\(id)_\(index)"
-			try Self.deleteDocumentData(
-				serviceName: serviceName,
-				accessGroup: accessGroup,
-				id: credentialId,
-				docStatus: status,
-				dataType: .doc
-			)
+			try deleteData(credentialId, .doc)
 		}
 		if keyBatchInfo.credentialPolicy == .rotateUse {
 			try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
