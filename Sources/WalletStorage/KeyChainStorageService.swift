@@ -117,7 +117,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		dataToLoadType: SavedKeyChainDataType,
 		authenticationContext: ThreadSafeAuthContext? = nil
 	) throws -> [[String: Any]]? {
-		let query = Self.makeQuery(
+		let query = try Self.makeQuery(
 			serviceName: serviceName,
 			accessGroup: accessGroup,
 			id: id,
@@ -203,7 +203,10 @@ public actor KeyChainStorageService: DataStorageService  {
 		status: DocumentStatus,
 		dataType: SavedKeyChainDataType,
 		authenticationContext: ThreadSafeAuthContext? = nil
-	) -> [String: Any] {
+	) throws -> [String: Any] {
+		guard !serviceName.contains(":") else {
+			throw StorageError(description: "Service name must not contain a colon (:).", code: Int(errSecParam))
+		}
 		let comps = [serviceName, dataType.rawValue, status.rawValue ]
 		let queryValue = comps.joined(separator: ":")
 		var query: [String: Any] = [
@@ -263,7 +266,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		add: (CFDictionary) -> OSStatus,
 		update: (CFDictionary, CFDictionary) -> OSStatus
 	) throws {
-		let query: [String: Any] = Self.makeQuery(
+		let query: [String: Any] = try Self.makeQuery(
 			serviceName: serviceName,
 			accessGroup: accessGroup,
 			id: id,
@@ -352,7 +355,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		docStatus: DocumentStatus,
 		dataType: SavedKeyChainDataType
 	) throws {
-		var query: [String: Any] = makeQuery(
+		var query: [String: Any] = try makeQuery(
 			serviceName: serviceName,
 			accessGroup: accessGroup,
 			id: id,

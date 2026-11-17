@@ -23,6 +23,10 @@ The [KeyChainStorageService](https://eu-digital-identity-wallet.github.io/eudi-l
     // accessGroup - the access group to be used for keychain storage. If nil, the default access group will be used. It can be not null to share storage access with other applications.
 	let keyChainObj = KeyChainStorageService(serviceName: serviceName, accessGroup: accessGroup)
 ```	
+Service names must not contain `:`. Both Keychain storage implementations reject
+such names with `StorageError` (`errSecParam`) before reading, writing, or deleting
+Keychain items.
+
 ### Documentation
 Detail documentation reference is provided [here](https://eu-digital-identity-wallet.github.io/eudi-lib-ios-wallet-storage/documentation/walletstorage/)
 
