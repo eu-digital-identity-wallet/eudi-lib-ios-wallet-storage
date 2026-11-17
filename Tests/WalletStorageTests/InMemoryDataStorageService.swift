@@ -34,7 +34,7 @@ public actor InMemoryDataStorageService: DataStorageService {
 		let doc0 = docs[0]
 		guard let dki = DocKeyInfo(from: doc0.docKeyInfo) else { return doc0 }
 		
-		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+		let secureArea = try SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		
 		guard keyBatchInfo.batchSize > 1 else {
@@ -109,7 +109,7 @@ public actor InMemoryDataStorageService: DataStorageService {
 			}
 			
 			// Delete keys from secure area
-			let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+			let secureArea = try SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 			try await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
 			try await secureArea.deleteKeyInfo(id: id)
 		}
@@ -132,7 +132,7 @@ public actor InMemoryDataStorageService: DataStorageService {
 					}
 					
 					// Delete keys from secure area
-					let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+					let secureArea = try SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 					try? await secureArea.deleteKeyBatch(id: id, startIndex: 0, batchSize: dki.batchSize)
 					try? await secureArea.deleteKeyInfo(id: id)
 				}

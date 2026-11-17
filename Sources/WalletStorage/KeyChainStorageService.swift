@@ -67,7 +67,7 @@ public actor KeyChainStorageService: DataStorageService  {
 		guard let placeholderDocument = placeholderDocuments?.first else { return nil }
 		if !needIndexToUse { return placeholderDocument }
 		guard let docKeyInfo = DocKeyInfo(from: placeholderDocument.docKeyInfo) else { return nil }
-		let secureArea = SecureAreaRegistry.shared.get(name: docKeyInfo.secureAreaName)
+		let secureArea = try SecureAreaRegistry.shared.get(name: docKeyInfo.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		let isUsedOneTimeCredential = keyBatchInfo.credentialPolicy == .oneTimeUse && keyBatchInfo.usedCounts[0] > 0
 		guard keyBatchInfo.batchSize > 1 else { return isUsedOneTimeCredential ? nil : placeholderDocument }
@@ -285,7 +285,7 @@ public actor KeyChainStorageService: DataStorageService  {
 			dataType: .docPresent
 		)
 		guard let dki else { logger.info("Could not find key info for id: \(id)"); return }
-		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+		let secureArea = try SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		let isOneTimeUsePolicy = keyBatchInfo.credentialPolicy == .oneTimeUse
 		guard status == .issued else { return }
