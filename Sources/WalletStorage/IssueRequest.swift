@@ -37,7 +37,7 @@ public struct IssueRequest: Sendable {
 		self.id = id
 		self.credentialOptions = credentialOptions
 		self.keyOptions = keyOptions
-		secureArea = SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
+		secureArea = try SecureAreaRegistry.shared.get(name: keyOptions?.secureAreaName)
 	}
 
 	public func createKeyBatch() async throws -> [CoseKey] {

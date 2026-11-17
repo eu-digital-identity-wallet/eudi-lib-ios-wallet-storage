@@ -248,7 +248,7 @@ public actor SwiftDataStorageService: DataStorageService {
 		guard let docKeyInfo = DocKeyInfo(from: placeholderDocument.docKeyInfo) else {
 			return placeholderDocument
 		}
-		let secureArea = SecureAreaRegistry.shared.get(name: docKeyInfo.secureAreaName)
+		let secureArea = try SecureAreaRegistry.shared.get(name: docKeyInfo.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		let isUsedOneTimeCredential =
 			keyBatchInfo.credentialPolicy == .oneTimeUse && keyBatchInfo.usedCounts[0] > 0
@@ -311,7 +311,7 @@ public actor SwiftDataStorageService: DataStorageService {
 			try context.save()
 			return
 		}
-		let secureArea = SecureAreaRegistry.shared.get(name: dki.secureAreaName)
+		let secureArea = try SecureAreaRegistry.shared.get(name: dki.secureAreaName)
 		let keyBatchInfo = try await secureArea.getKeyBatchInfo(id: id)
 		let isOneTimeUsePolicy = keyBatchInfo.credentialPolicy == .oneTimeUse
 		guard status == .issued else {
